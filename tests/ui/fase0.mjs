@@ -7,6 +7,7 @@
 //   node tests/ui/fase0.mjs
 import { createRequire } from 'node:module';
 import { servir } from '../servir.mjs';
+import { URL_PROYECTO } from '../backend_local.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
@@ -45,9 +46,12 @@ async function revisarPantalla(page, nombre) {
 
 const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'es-AR' };
 
-// 1) App sin configurar (estado del repo)
+// 1) App sin configurar
 {
   const ctx = await navegador.newContext(MOVIL);
+  // Se simula una instalación sin clave cargada (el repo ya tiene la real).
+  await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: '" + URL_PROYECTO + "', SUPABASE_ANON_KEY: 'TU-ANON-KEY', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   const page = await nuevaPagina(ctx);
   await page.goto(BASE);
   await page.waitForSelector('.aviso');
@@ -77,9 +81,9 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
 {
   const ctx = await navegador.newContext(MOVIL);
   await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
-    "window.CONFIG = Object.freeze({ SUPABASE_URL: 'https://tu-proyecto.supabase.co', SUPABASE_ANON_KEY: 'clave-publica-de-prueba', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: '" + URL_PROYECTO + "', SUPABASE_ANON_KEY: 'clave-publica-de-prueba', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   let emailPedido = null;
-  await ctx.route('https://tu-proyecto.supabase.co/auth/v1/token**', async (r) => {
+  await ctx.route(URL_PROYECTO + '/auth/v1/token**', async (r) => {
     emailPedido = JSON.parse(r.request().postData() || '{}').email;
     await r.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
       body: JSON.stringify({ code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }) });
@@ -106,6 +110,9 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
 // 3) Página del comprador
 {
   const ctx = await navegador.newContext(MOVIL);
+  // Se simula una instalación sin clave cargada (el repo ya tiene la real).
+  await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: '" + URL_PROYECTO + "', SUPABASE_ANON_KEY: 'TU-ANON-KEY', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   const page = await nuevaPagina(ctx);
   await page.goto(BASE + 'entrada.html');
   await page.waitForSelector('.aviso');

@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const URL_PROYECTO = 'https://tu-proyecto.supabase.co';
+// El mismo proyecto que js/config.js (así coincide con el CSP). Las pruebas
+// nunca llegan a la red: Playwright intercepta todo lo que va a esa URL.
+export const URL_PROYECTO = readFileSync(path.join(RAIZ, 'js/config.js'), 'utf8').match(/SUPABASE_URL:\s*'([^']+)'/)[1];
 export const ANON_KEY = 'clave-anon-de-prueba';
 
 function pgBin() {
@@ -22,7 +24,7 @@ function pgBin() {
   return path.join(base, v, 'bin');
 }
 
-export async function levantarBase({ ahora } = {}) {
+export async function levantarBase({ ahora, semilla = true } = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'pg-entradas-'));
   const root = process.getuid && process.getuid() === 0;
   const como = (bin, args) => root
@@ -36,7 +38,7 @@ export async function levantarBase({ ahora } = {}) {
   const pool = new pg.Pool({ host: dir, port: puerto, user: 'postgres', database: 'postgres', max: 8 });
   const archivos = ['tests/sql/00_supabase_stub.sql',
     ...readdirSync(path.join(RAIZ, 'supabase/migrations')).sort().map((f) => 'supabase/migrations/' + f),
-    'supabase/seed.sql'];
+    ...(semilla ? ['supabase/seed.sql'] : [])];
   for (const f of archivos) await pool.query(readFileSync(path.join(RAIZ, f), 'utf8'));
   if (ahora) await fijarReloj(pool, ahora);
 

@@ -66,6 +66,9 @@ docs/                 Checklist de seguridad y guía de la prueba de campo
 
 ## Poner en marcha Supabase
 
+Guía paso a paso con el proyecto real: [`docs/PUESTA_EN_MARCHA.md`](docs/PUESTA_EN_MARCHA.md).
+La configuración inicial de producción (primer admin, evento y tandas) está en `supabase/configuracion_inicial.sql`.
+
 1. Crear el proyecto en Supabase (región São Paulo, la más cercana).
 2. **Auth → Providers → Email**: activado, *Confirm email* **desactivado**. *Allow new users to sign up*:
    **desactivado** (los usuarios los crea el admin).

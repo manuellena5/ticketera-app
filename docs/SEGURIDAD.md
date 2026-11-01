@@ -85,7 +85,7 @@ Revisado en la fase 5. Cada punto dice **cómo se verificó** (test automático)
 - [ ] Correr las migraciones en orden (`supabase/migrations/`). **No** correr `seed.sql` en producción (o usar
       `supabase/limpiar_pruebas.sql` después de la prueba de campo).
 - [ ] `js/config.js` + CSP con la URL y la *anon key* (nunca la *service role*).
-- [ ] Desplegar la Edge Function `admin_crear_usuario` con `AUTH_DOMAIN` y `ORIGENES_PERMITIDOS`.
+- [ ] Desplegar la Edge Function `admin_crear_usuario` con **Verify JWT desactivado** (la función verifica que sea un admin).
 - [ ] Crear el primer admin (ver README).
 - [ ] Plan **Pro** el mes de la venta, o activar el ping diario (`.github/workflows/ping-supabase.yml`).
 - [ ] Opcional: desactivar Realtime y GraphQL (no se usan; igual no exponen nada porque no hay permisos).

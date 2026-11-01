@@ -158,7 +158,8 @@
         }
         const texto = mensaje ||
           (!navigator.onLine ? 'Sin conexión. Para crear usuarios necesitás internet.'
-            : 'No se pudo conectar con el servicio que crea usuarios. Revisá el paso 4 de la guía de puesta en marcha (el detalle quedó en Errores).');
+            : 'No se pudo conectar con el servicio que crea usuarios. Para revisarlo, abrí en el navegador ' +
+              CONFIG.SUPABASE_URL + '/functions/v1/admin_crear_usuario y seguí la tabla de diagnóstico de la guía de puesta en marcha.');
         throw Object.assign(new Error(texto), { code: 'P0001', message: texto });
       }
       return data;

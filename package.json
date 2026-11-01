@@ -1,0 +1,13 @@
+{
+  "name": "ticketera-app",
+  "private": true,
+  "description": "App de entradas del Club Deportivo Mitre (PWA estática + Supabase)",
+  "type": "module",
+  "scripts": {
+    "servir": "node tests/servir.mjs 8080",
+    "test": "npm run test:sql && npm run test:estatico && npm run test:ui",
+    "test:sql": "bash tests/sql/correr.sh",
+    "test:estatico": "node tests/ui/revisar_estatico.mjs",
+    "test:ui": "node tests/ui/fase0.mjs"
+  }
+}

@@ -55,6 +55,11 @@ insert into pruebas.esperado values
   ('resumen_cierre',               '{admin}'),
   ('anonimizar_datos_personales',  '{admin}'),
   ('limpiar_intentos_link',        '{admin}'),
+  ('registrar_error',              '{anon,admin,rrpp,puerta,caja,inactivo,sin_perfil}'),
+  ('errores_admin',                '{admin}'),
+  ('marcar_errores_revisados',     '{admin}'),
+  ('borrar_errores_viejos',        '{admin}'),
+  ('registrar_error_servidor',     '{}'),     -- solo service_role (Edge Function)
   ('admin_registrar_usuario',      '{}'),     -- solo service_role (Edge Function)
   ('admin_clave_temporal',         '{}');
 grant usage on schema pruebas to anon, authenticated;
@@ -131,7 +136,7 @@ begin
   perform pruebas.ok(n = 0, format('matriz de permisos: %s combinaciones función × rol, todas como se esperaba', total));
 end $$;
 
-select pruebas.ok((select count(*) from pruebas.resultado where funcion like 'admin_%' and obtenido = 'permitido') = 0,
+select pruebas.ok((select count(*) from pruebas.resultado where (funcion like 'admin_%' or funcion = 'registrar_error_servidor') and obtenido = 'permitido') = 0,
                   'las funciones de alta de usuarios no las ejecuta ningún cliente');
 select pruebas.ok(not has_schema_privilege('authenticated', 'public', 'CREATE') and not has_schema_privilege('anon', 'public', 'CREATE'),
                   'los clientes no pueden crear objetos en public');

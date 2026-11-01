@@ -10,7 +10,7 @@ Proyecto: `https://nkeijeavrkdhtkvkgcvh.supabase.co` (ya cargado en `js/config.j
    Crea el primer admin, el evento (en borrador) con sus 3 tandas y la configuración del club.
    Al final muestra `admins 1 · eventos 1 · tandas 3 · config 1`.
    **No** correr `seed.sql` (es solo para pruebas: tiene contraseñas conocidas).
-3. **Verificación** (solo lectura): correr `supabase/verificar_proyecto.sql`. Las 16 filas tienen que decir ✅.
+3. **Verificación** (solo lectura): correr `supabase/verificar_proyecto.sql`. Todas las filas tienen que decir ✅.
 
 ## 2. Autenticación (Authentication → Sign In / Providers)
 
@@ -25,14 +25,22 @@ Proyecto: `https://nkeijeavrkdhtkvkgcvh.supabase.co` (ya cargado en `js/config.j
 
 ## 4. Edge Function para crear usuarios desde el panel
 
-Sin instalar nada: *Edge Functions → Deploy a new function → Via Editor*.
-- Nombre: `admin_crear_usuario`.
-- Pegar el contenido de `supabase/functions/admin_crear_usuario/index.ts` y desplegar.
-- *Edge Functions → Secrets* (o *Manage secrets*): agregar
-  - `AUTH_DOMAIN` = `usuarios.ticketera-app.com.ar`
-  - `ORIGENES_PERMITIDOS` = `https://manuellena5.github.io`
+1. Correr la migración **`20261101000009_errores_tecnicos.sql`** (crea el registro de errores técnicos
+   que usa la función y la app).
+2. *Edge Functions → `admin_crear_usuario` → Code*: reemplazar todo por el contenido actual de
+   `supabase/functions/admin_crear_usuario/index.ts` y **Deploy**.
+3. *Edge Functions → `admin_crear_usuario` → Details / Settings*: **desactivar "Verify JWT"**
+   (en algunos paneles dice "Enforce JWT verification" o "Verify JWT with legacy secret") y guardar.
+   Es necesario: el navegador primero hace una consulta previa sin token (CORS) y, si el gateway exige
+   el token, la rechaza y aparece el error *"Response to preflight request doesn't pass access control
+   check"*. La función igual verifica ella misma que quien llama sea un admin activo.
+4. *Edge Functions → Secrets*: `AUTH_DOMAIN` = `usuarios.ticketera-app.com.ar` y (opcional)
+   `ORIGENES_PERMITIDOS` = `https://manuellena5.github.io`.
 
-Con la CLI es: `supabase functions deploy admin_crear_usuario --project-ref nkeijeavrkdhtkvkgcvh`.
+Con la CLI: `supabase functions deploy admin_crear_usuario --no-verify-jwt --project-ref nkeijeavrkdhtkvkgcvh`
+(o usa `supabase/config.toml`, que ya tiene `verify_jwt = false`).
+
+Si algo falla, el detalle técnico queda en el panel: **Errores**.
 
 ## 5. Primer ingreso y datos del evento
 

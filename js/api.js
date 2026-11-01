@@ -41,7 +41,15 @@
     // reintentos de una venta los maneja la app con la misma clave.
     if (typeof consulta.retry === 'function') consulta = consulta.retry(false);
     const { data, error } = await consulta;
-    if (error) throw error;
+    if (error) {
+      // Los mensajes propios de las reglas (P0001) no son errores técnicos; tampoco
+      // una sesión vencida o la falta de señal. El resto se registra.
+      const esRegla = error.code === 'P0001';
+      const sinSenal = !navigator.onLine;
+      const sesion = error.code === 'PGRST301' || /JWT/i.test(error.message || '');
+      if (!esRegla && !sinSenal && !sesion && window.LOG) LOG.error('rpc', error, { funcion: nombre });
+      throw error;
+    }
     return data;
   }
 

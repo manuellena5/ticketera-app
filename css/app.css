@@ -432,3 +432,5 @@ select.entrada-texto { appearance: auto; }
 .botones-exportar { display: flex; flex-wrap: wrap; gap: 8px; }
 .opciones--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .check-caja { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.check-caja--texto { gap: 10px; justify-content: flex-start; font-weight: 600; }
+.detalle-error { margin: 0; padding: 12px; background: var(--fondo); border-radius: 10px; font-size: 16px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }

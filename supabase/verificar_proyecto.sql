@@ -7,8 +7,8 @@ with funciones as (
   select p.proname, p.prosecdef, coalesce(p.proconfig, '{}') as conf, p.oid
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
 ), chequeos(orden, chequeo, ok, detalle) as (
-  select 1, 'Migraciones: las 40 funciones de la app',
-         (select count(*) from funciones) >= 40,
+  select 1, 'Migraciones: las 45 funciones de la app (hasta la 0009)',
+         (select count(*) from funciones) >= 45,
          (select count(*) from funciones)::text || ' funciones en public'
   union all
   select 2, 'RLS activado en todas las tablas',
@@ -27,9 +27,9 @@ with funciones as (
                      where t.schemaname = 'public' and has_table_privilege('authenticated', format('public.%I', t.tablename), pr)),
          'insert/update/delete/truncate'
   union all
-  select 5, 'anon solo ejecuta las funciones del comprador y ping',
+  select 5, 'anon solo ejecuta las funciones del comprador, ping y el registro de errores',
          (select coalesce(array_agg(proname::text order by proname), '{}') from funciones where has_function_privilege('anon', oid, 'EXECUTE'))
-           = array['evento_del_link','pasar_entrada','ping','ver_entrada_pasada','ver_entradas'],
+           = array['evento_del_link','pasar_entrada','ping','registrar_error','ver_entrada_pasada','ver_entradas'],
          (select string_agg(proname, ', ' order by proname) from funciones where has_function_privilege('anon', oid, 'EXECUTE'))
   union all
   select 6, 'Toda función es SECURITY DEFINER con search_path fijo',
@@ -73,6 +73,10 @@ with funciones as (
          exists (select 1 from public.config_club where id = 1),
          coalesce((select case when transf_alias is null then 'falta cargar los datos para transferir (desde el panel)' else 'alias ' || transf_alias end
                    from public.config_club where id = 1), 'sin fila')
+  union all
+  select 17, 'Registro de errores técnicos (migración 0009)',
+         exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'errores_tecnicos'),
+         'errores_tecnicos'
   union all
   select 16, 'Sin datos de prueba (seed.sql no se corrió)',
          not exists (select 1 from public.perfiles where usuario in ('lucia', 'martin', 'sofia', 'puerta1', 'puerta2', 'caja')

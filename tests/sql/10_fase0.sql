@@ -57,7 +57,7 @@ select pruebas.ok(
   (select coalesce(array_agg(p.proname::text order by p.proname), '{}')
    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public','privado') and has_function_privilege('anon', p.oid, 'EXECUTE'))
-  = array['evento_del_link','pasar_entrada','ping','ver_entrada_pasada','ver_entradas'],
+  = array['evento_del_link','pasar_entrada','ping','registrar_error','ver_entrada_pasada','ver_entradas'],
   'anon solo puede ejecutar las 4 funciones de la página del comprador (y ping)');
 
 select pruebas.ok(

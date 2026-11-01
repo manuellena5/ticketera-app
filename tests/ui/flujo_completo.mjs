@@ -28,6 +28,17 @@ async function celular(extra = {}) {
   await instalarSupabase(ctx, base.pool);
   return ctx;
 }
+// Lee el QR que se ve en un canvas, con reintentos (un cuadro recién dibujado
+// en una máquina lenta puede no estar listo al primer intento).
+async function leerQR(page, selector) {
+  for (let i = 0; i < 5; i++) {
+    const v = await lector.leerPNG(await pngDeCanvas(page, selector)).catch(() => null);
+    if (v) return v;
+    await page.waitForTimeout(300);
+  }
+  return null;
+}
+
 async function ingresar(ctx, usuario, espera) {
   const p = seguirErrores(await ctx.newPage());
   await p.goto(BASE);
@@ -64,7 +75,8 @@ try {
   await ana.fill('input[name=dni]', '30111456');
   await ana.click('#ver');
   await ana.waitForSelector('[data-qr="2"] canvas');
-  const qrAna = await lector.leerPNG(await pngDeCanvas(ana, '[data-qr="1"] canvas'));
+  const qrAna = await leerQR(ana, '[data-qr="1"] canvas');
+  ok(/^[A-Z2-7]{26}$/.test(qrAna || ''), 'el QR de Ana se lee desde su pantalla');
   await ana.click('[data-pasar="2"]');
   await ana.fill('#para', 'Laura');
   const [wa] = await Promise.all([cAna.waitForEvent('page'), ana.click('#enviar')]);
@@ -79,8 +91,8 @@ try {
   const laura = seguirErrores(await cLaura.newPage());
   await laura.goto(linkLaura);
   await laura.waitForSelector('canvas.qr');
-  const qrLaura = await lector.leerPNG(await pngDeCanvas(laura, 'canvas.qr'));
-  ok(/Tu entrada, Laura/.test(await texto(laura, 'main')) && qrLaura && qrLaura !== qrAna, 'Laura tiene su propio QR');
+  const qrLaura = await leerQR(laura, 'canvas.qr');
+  ok(/Tu entrada, Laura/.test(await texto(laura, 'main')) && /^[A-Z2-7]{26}$/.test(qrLaura || '') && qrLaura !== qrAna, 'Laura tiene su propio QR (y se lee)');
 
   console.log('\n== 4. El día del evento: la puerta escanea lo que muestran los celulares');
   await fijarReloj(base.pool, '2026-12-18 23:30:00-03');
@@ -93,15 +105,27 @@ try {
   const escanear = async (cod) => {
     const antes = await texto(puerta, '#resultado');
     await puerta.evaluate((v) => { window.__qr = v; }, cod);
-    await puerta.waitForFunction((a) => document.querySelector('#resultado').innerText.replace(/\s+/g, ' ').trim() !== a, antes);
+    const cambio = await puerta.waitForFunction((a) => document.querySelector('#resultado').innerText.replace(/\s+/g, ' ').trim() !== a, antes, { timeout: 15000 })
+      .then(() => true).catch(() => false);
+    if (!cambio) {
+      // Diagnóstico en vez de un timeout mudo.
+      const diag = await puerta.evaluate(() => ({ qr: window.__qr, video: document.querySelector('#video') && document.querySelector('#video').readyState,
+        resultado: document.querySelector('#resultado') && document.querySelector('#resultado').innerText }));
+      await puerta.evaluate(() => { window.__qr = null; });
+      return 'SIN RESULTADO ' + JSON.stringify(diag);
+    }
     await puerta.evaluate(() => { window.__qr = null; });
     await puerta.waitForTimeout(150);
     return texto(puerta, '#resultado');
   };
-  ok(/^VÁLIDA Ana Pérez · Entrada 1 de 2/.test(await escanear(qrAna)), 'entra Ana');
-  ok(/^VÁLIDA Ana Pérez · Entrada 2 de 2 Anticipada · Pasada a Laura · Colocá la pulsera/.test(await escanear(qrLaura)), 'entra Laura (pasada por Ana)');
+  const mostrar = (r) => (/^SIN RESULTADO/.test(r) ? ' → ' + r : '');
+  let r = await escanear(qrAna);
+  ok(/^VÁLIDA Ana Pérez · Entrada 1 de 2/.test(r), 'entra Ana' + mostrar(r));
+  r = await escanear(qrLaura);
+  ok(/^VÁLIDA Ana Pérez · Entrada 2 de 2 Anticipada · Pasada a Laura · Colocá la pulsera/.test(r), 'entra Laura (pasada por Ana)' + mostrar(r));
   await puerta.waitForTimeout(2600);
-  ok(/^YA INGRESÓ A las \d\d:\d\d · Ana Pérez DNI terminado en 456/.test(await escanear(qrLaura)), 'una captura de pantalla del QR de Laura ya no entra');
+  r = await escanear(qrLaura);
+  ok(/^YA INGRESÓ A las \d\d:\d\d · Ana Pérez DNI terminado en 456/.test(r), 'una captura de pantalla del QR de Laura ya no entra' + mostrar(r));
   await revisar(puerta, 'escáner en el flujo completo');
   await ana.reload();
   await ana.waitForSelector('text=Ya ingresó');

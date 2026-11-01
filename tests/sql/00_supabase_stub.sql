@@ -65,3 +65,7 @@ grant usage on schema public to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
+-- Supabase deja crear objetos en public a los roles de la API: se emula
+-- para que el test de endurecimiento sea realista.
+grant create on schema public to anon, authenticated;

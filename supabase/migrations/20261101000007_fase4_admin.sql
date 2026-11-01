@@ -661,6 +661,9 @@ declare
   i        int;
 begin
   v_yo := privado.exigir_rol('admin');
+  -- Primero se bloquea la fila del evento: serializa las ventas y hace que
+  -- dos pedidos con la misma clave (doble toque simultáneo) se vean entre sí.
+  perform 1 from public.eventos e where e.id = (privado.evento_actual()).id for update;
   if p_idem is not null then
     select * into v_previa from public.ventas where idempotency_key = p_idem;
     if v_previa.id is not null then

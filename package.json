@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "servir": "node tests/servir.mjs 8080",
-    "test": "npm run test:sql && npm run test:estatico && npm run test:ui",
+    "test": "npm run test:sql && npm run test:estatico && npm run test:ui && npm run test:flujo && npm run test:carga",
     "test:sql": "bash tests/sql/correr.sh",
     "test:estatico": "node tests/ui/revisar_estatico.mjs",
-    "test:ui": "node tests/ui/fase0.mjs && node tests/ui/fase1.mjs && node tests/ui/fase2.mjs && node tests/ui/fase3.mjs && node tests/ui/fase4.mjs"
+    "test:ui": "node tests/ui/fase0.mjs && node tests/ui/fase1.mjs && node tests/ui/fase2.mjs && node tests/ui/fase3.mjs && node tests/ui/fase4.mjs",
+    "test:flujo": "node tests/ui/flujo_completo.mjs",
+    "test:carga": "node tests/carga/concurrencia.mjs && node tests/carga/carga.mjs"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",

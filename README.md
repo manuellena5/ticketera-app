@@ -29,7 +29,9 @@ vendor/               Librerías copiadas al repo (sin CDN): supabase-js, qrcode
 supabase/migrations/  Esquema, seguridad (RLS + revocaciones) y RPC
 supabase/functions/   Edge Function admin_crear_usuario (alta de usuarios y contraseñas temporales)
 supabase/seed.sql     Datos de PRUEBA (evento, tandas, usuarios)
-tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
+tests/                Tests SQL (Postgres local), de interfaz (Chromium) y de carga
+docs/                 Checklist de seguridad y guía de la prueba de campo
+.github/workflows/    Tests en cada push y ping diario a Supabase
 ```
 
 ## Estado
@@ -50,6 +52,10 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
   desactivar), transferencias (confirmar y CSV), rendición según la sección 7 con comprobante PNG,
   evento/tandas/datos para transferir, auditoría legible, exportes CSV para Excel es-AR, resumen de
   cierre y anonimización manual de DNI y teléfonos.
+- **Fase 5** (endurecimiento): matriz de permisos función × rol, concurrencia (20 a la vez con 5 lugares
+  → pasan 5), carga de 1.000 entradas y 1.000 ingresos desde 2 celulares, flujo completo de punta a punta,
+  checklist de seguridad (`docs/SEGURIDAD.md`) y guía de la prueba de campo (`docs/PRUEBA_DE_CAMPO.md`).
+  **Falta**: la prueba de campo con RRPP reales y un Android de gama baja (necesita el proyecto de Supabase).
 
 ## Seguridad en dos líneas
 
@@ -86,12 +92,14 @@ Requisitos: Node 18+ (`npm install` para el driver de Postgres de los tests), Po
 y Playwright con Chromium.
 
 ```bash
-npm test               # todo
+npm test               # todo (SQL, estáticos, pantallas, flujo completo, carga)
 npm run test:sql       # RLS, revocaciones y roles sobre un Postgres local que emula Supabase
 npm run test:estatico  # CSP, archivos del service worker, claves filtradas
 npm run test:ui        # pantallas en Chromium headless (sin IDs ni jerga, 48 px, modo avión)
                        # fase 1: de punta a punta contra un Postgres local con las migraciones
                        # reales; Auth y RPC de Supabase se emulan en tests/backend_local.mjs
+npm run test:flujo     # RRPP → comprador → puerta → admin, encadenados
+npm run test:carga     # concurrencia y carga (1.000 entradas)
 npm run servir         # http://127.0.0.1:8080/
 ```
 

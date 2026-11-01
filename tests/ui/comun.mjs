@@ -81,3 +81,25 @@ export async function pngDeCanvas(page, selector) {
   const b64 = await page.$eval(selector, (cv) => cv.toDataURL('image/png').split(',')[1]);
   return Buffer.from(b64, 'base64');
 }
+
+// Cámara simulada: un canvas que dibuja el QR de window.__qr (para probar
+// la lectura real video → canvas → jsQR sin cámara física).
+export function camaraFalsa() {
+  return '(() => {\n' + readFileSync(new URL('../../vendor/qrcode/qrcode.js', import.meta.url), 'utf8') + `
+  window.__qr = null;
+  navigator.mediaDevices.getUserMedia = async () => {
+    const cv = document.createElement('canvas'); cv.width = 640; cv.height = 480;
+    const g = cv.getContext('2d');
+    const dibujar = () => {
+      g.fillStyle = '#6B7280'; g.fillRect(0, 0, 640, 480);
+      if (!window.__qr) return;
+      const q = qrcode(0, 'M'); q.addData(window.__qr, /^[0-9A-Z $%*+\\-./:]+$/.test(window.__qr) ? 'Alphanumeric' : 'Byte'); q.make();
+      const n = q.getModuleCount(), celda = Math.floor(380 / (n + 8)), lado = celda * (n + 8), x0 = (640 - lado) / 2, y0 = (480 - lado) / 2;
+      g.fillStyle = '#fff'; g.fillRect(x0, y0, lado, lado); g.fillStyle = '#000';
+      for (let f = 0; f < n; f++) for (let k = 0; k < n; k++) if (q.isDark(f, k)) g.fillRect(x0 + (k + 4) * celda, y0 + (f + 4) * celda, celda, celda);
+    };
+    setInterval(dibujar, 40); dibujar();
+    return cv.captureStream(25);
+  };
+})();`;
+}

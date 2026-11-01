@@ -1,0 +1,26 @@
+# Ping diario para que el plan gratis de Supabase no se pause por inactividad.
+# Configurar en el repo: Settings → Secrets and variables → Actions:
+#   SUPABASE_URL (https://<proyecto>.supabase.co) y SUPABASE_ANON_KEY (la clave pública).
+name: Ping a Supabase
+
+on:
+  schedule:
+    - cron: '17 12 * * *'   # todos los días, 09:17 de Argentina
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Ping
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Faltan los secrets SUPABASE_URL y SUPABASE_ANON_KEY: no se hace nada."
+            exit 0
+          fi
+          curl -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" -d '{}'

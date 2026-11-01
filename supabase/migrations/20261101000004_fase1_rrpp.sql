@@ -236,6 +236,10 @@ begin
     perform privado.error('datos', 'Algo salió mal. Probá de nuevo.');
   end if;
 
+  -- Primero se bloquea la fila del evento: serializa las ventas y hace que
+  -- dos pedidos con la misma clave (doble toque simultáneo) se vean entre sí.
+  perform 1 from public.eventos e where e.id = (privado.evento_actual()).id for update;
+
   -- Reintento (doble toque, se cortó la señal): misma venta, link nuevo.
   select * into v_previa from public.ventas where idempotency_key = p_idem;
   if found then

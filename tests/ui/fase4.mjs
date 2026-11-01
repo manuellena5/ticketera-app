@@ -52,7 +52,11 @@ async function vender(usuario, nombre, dni, cant, medio) {
 }
 async function ir(page, seccion, espera) {
   await page.click('.admin-nav a[href="#' + seccion + '"]');
-  await page.waitForSelector(espera);
+  // El marco se redibuja entero al cambiar de sección: primero se espera el menú
+  // marcado (ya no queda nada de la pantalla anterior) y después el contenido.
+  await page.waitForSelector('.admin-nav a[href="#' + seccion + '"][aria-current="page"]');
+  await page.waitForSelector(espera + ':not(:has-text("Cargando…"))');
+  await page.waitForFunction(() => !/Cargando…/.test(document.querySelector('main').innerText));
 }
 async function descargarCSV(page, accion) {
   const [d] = await Promise.all([page.waitForEvent('download'), accion()]);
@@ -269,7 +273,7 @@ try {
 
   // ===================================================================
   console.log('\n== Auditoría y celular');
-  await ir(page, 'auditoria', '.tabla');
+  await ir(page, 'auditoria', '#filtro-auditoria');
   const au = await texto(page, 'tbody');
   ok(/Anuló una venta Laura Sosa · 1 entrada · Motivo: Pagó con un billete falso/.test(au), 'auditoría: quién anuló, qué y por qué');
   ok(/Registró un movimiento de rendición Lucía Fernández/.test(au) && /Creó un usuario/.test(au) && /Desactivó un usuario/.test(au), 'movimientos, altas y bajas en la auditoría');

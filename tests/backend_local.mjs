@@ -251,7 +251,11 @@ export async function instalarSupabase(contexto, pool) {
     try {
       if (url.pathname.startsWith('/auth/v1/')) return await auth(route, req, url);
       if (url.pathname.startsWith('/rest/v1/rpc/')) return await rpc(route, req, url);
-      if (url.pathname === '/functions/v1/admin_crear_usuario') return await funcionUsuarios(route, req);
+      if (url.pathname === '/functions/v1/admin_crear_usuario') {
+        // funcionCaida simula lo que ve el navegador cuando el preflight de CORS falla.
+        if (registro.funcionCaida) return route.abort('failed');
+        return await funcionUsuarios(route, req);
+      }
       return json(route, 404, { message: 'no emulado' });
     } catch (err) {
       console.error('backend_local:', err);

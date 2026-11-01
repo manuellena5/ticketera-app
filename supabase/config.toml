@@ -1,0 +1,5 @@
+# Configuración para la CLI de Supabase (supabase functions deploy).
+# La función verifica ella misma que quien llama sea admin; si el gateway
+# verificara el JWT, rechazaría el preflight de CORS (OPTIONS).
+[functions.admin_crear_usuario]
+verify_jwt = false

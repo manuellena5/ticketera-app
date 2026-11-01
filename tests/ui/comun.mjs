@@ -26,10 +26,12 @@ export function seguirErrores(page) {
 // texto ≥ 16 px en <main> y sin scroll lateral.
 export function revisor(ok) {
   const vistas = new Set();
-  return async function revisar(page, nombre) {
+  // opciones.tecnica: pantallas que muestran a propósito datos técnicos
+  // (el registro de errores del admin): no se revisa la jerga.
+  return async function revisar(page, nombre, opciones = {}) {
     await page.waitForTimeout(50);
     const texto = await page.evaluate(() => document.body.innerText);
-    const hallado = PROHIBIDO.map((re) => texto.match(re)).filter(Boolean).map((m) => m[0]);
+    const hallado = opciones.tecnica ? [] : PROHIBIDO.map((re) => texto.match(re)).filter(Boolean).map((m) => m[0]);
     const chicos = await page.evaluate(() => [...document.querySelectorAll('button, .boton, input')]
       .filter((b) => b.offsetParent && b.type !== 'hidden' && b.type !== 'checkbox').filter((b) => b.getBoundingClientRect().height < 44)
       .map((b) => (b.textContent || b.name || b.id).trim()));

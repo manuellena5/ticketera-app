@@ -8,7 +8,7 @@
   const e = U.escaparHTML;
   const SECCIONES = [
     ['tablero', 'Tablero'], ['ventas', 'Ventas'], ['rrpp', 'RRPP'], ['transferencias', 'Transferencias'],
-    ['rendicion', 'Rendición'], ['evento', 'Evento y tandas'], ['auditoria', 'Auditoría'], ['exportar', 'Exportar'],
+    ['rendicion', 'Rendición'], ['evento', 'Evento y tandas'], ['auditoria', 'Auditoría'], ['errores', 'Errores'], ['exportar', 'Exportar'],
   ];
   const MEDIO = { efectivo: 'Efectivo', transferencia: 'Transferencia', cortesia: 'Cortesía' };
   const CANAL = { rrpp: 'RRPP', caja: 'Puerta', cortesia: 'Cortesía', papel: 'Papel' };
@@ -142,11 +142,24 @@
     function avisoError(err) { if (!err || !err.silencioso) U.avisar(U.mensajeDeError(err)); }
 
     async function funcionUsuarios(cuerpo) {
-      const { data, error } = await API.conSesion().functions.invoke('admin_crear_usuario', { body: cuerpo });
+      let respuesta;
+      try {
+        respuesta = await API.conSesion().functions.invoke('admin_crear_usuario', { body: cuerpo });
+      } catch (err) {
+        respuesta = { error: err };
+      }
+      const { data, error } = respuesta;
       if (error) {
-        let mensaje = null;
-        try { mensaje = (await error.context.json()).mensaje; } catch (_) { /* sin cuerpo */ }
-        throw Object.assign(new Error(mensaje || 'No se pudo completar.'), { code: 'P0001', message: mensaje || U.mensajeDeError(error) });
+        let mensaje = null, estado = null;
+        try { estado = error.context && error.context.status; mensaje = (await error.context.json()).mensaje; } catch (_) { /* sin cuerpo */ }
+        const sinLlegar = !mensaje && navigator.onLine;   // CORS, función no desplegada o caída
+        if (window.LOG && (sinLlegar || (estado && estado >= 500))) {
+          LOG.error('funcion', error, { funcion: 'admin_crear_usuario', accion: cuerpo.accion, estado });
+        }
+        const texto = mensaje ||
+          (!navigator.onLine ? 'Sin conexión. Para crear usuarios necesitás internet.'
+            : 'No se pudo conectar con el servicio que crea usuarios. Revisá el paso 4 de la guía de puesta en marcha (el detalle quedó en Errores).');
+        throw Object.assign(new Error(texto), { code: 'P0001', message: texto });
       }
       return data;
     }
@@ -936,6 +949,46 @@
       $('#filtro-auditoria').addEventListener('change', (ev) => { st.filtroAuditoria = ev.target.value; sAuditoria(); });
     }
 
+    // ======================= Errores técnicos =======================
+    const ORIGEN_ERROR = { js: 'La app', rpc: 'El servidor', funcion: 'Servicio de usuarios', edge: 'Servicio de usuarios (servidor)', comprador: 'Página del comprador', app: 'La app' };
+    async function sErrores() {
+      cargando('Errores técnicos');
+      try { st.errores = await rpc('errores_admin', { p_filtros: { pendientes: !!st.soloPendientes } }); } catch (err) { return avisoError(err); }
+      if (st.seccion !== 'errores') return;
+      const lista = st.errores || [];
+      const abierto = st.errorAbierto;
+      marco('<div class="admin-titulo"><h2>Errores técnicos</h2>' +
+        '<div class="botones-exportar"><button class="boton" type="button" id="err-revisados">Marcar los visibles como revisados</button>' +
+        '<button class="boton boton--texto" type="button" id="err-viejos">Borrar los de más de 30 días</button></div></div>' +
+        '<p class="suave">Fallas que la gente no ve en detalle (en pantalla les aparece un mensaje simple). Sirven para encontrar y arreglar problemas. ' +
+        'No se guardan links, códigos de entradas ni DNI.</p>' +
+        '<label class="check-caja check-caja--texto"><input type="checkbox" class="check" id="err-pendientes"' + (st.soloPendientes ? ' checked' : '') + '> Solo los sin revisar</label>' +
+        '<section class="tarjeta"><div class="tabla-caja"><table class="tabla tabla--clic"><thead><tr><th>Cuándo</th><th>Dónde</th><th>Quién</th><th>Qué pasó</th><th></th></tr></thead><tbody>' +
+        (lista.length ? lista.map((x, i) => '<tr data-i="' + i + '" tabindex="0"' + (abierto === x.ref ? ' class="fila-sel"' : '') + '>' +
+          '<td>' + fechaHora(x.cuando) + '</td><td>' + e(ORIGEN_ERROR[x.origen] || x.origen) + (x.pantalla ? '<br><span class="suave">' + e(x.pantalla) + '</span>' : '') + '</td>' +
+          '<td>' + e(x.quien || (x.origen === 'comprador' ? 'Comprador' : 'Sin sesión')) + '</td><td>' + e(x.mensaje) + '</td>' +
+          '<td>' + (x.revisado ? chip('Revisado', 'neutro') : chip('Nuevo', 'pendiente')) + '</td></tr>' +
+          (abierto === x.ref ? '<tr><td colspan="5"><pre class="detalle-error">' + e(JSON.stringify({ detalle: x.detalle, version: x.version, navegador: x.navegador, pagina: x.pagina }, null, 2)) + '</pre></td></tr>' : '')).join('')
+          : '<tr><td colspan="5" class="suave">No hay errores registrados.</td></tr>') +
+        '</tbody></table></div></section>');
+      $$('tr[data-i]').forEach((tr) => {
+        const abrir = () => { const x = lista[Number(tr.dataset.i)]; st.errorAbierto = st.errorAbierto === x.ref ? null : x.ref; sErrores(); };
+        tr.addEventListener('click', abrir);
+        tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') abrir(); });
+      });
+      $('#err-pendientes').addEventListener('change', (ev) => { st.soloPendientes = ev.target.checked; sErrores(); });
+      $('#err-revisados').addEventListener('click', (ev) => U.conBoton(ev.currentTarget, async () => {
+        const ids = lista.filter((x) => !x.revisado).map((x) => x.ref);
+        if (!ids.length) return U.avisar('No hay errores nuevos.');
+        try { const r = await rpc('marcar_errores_revisados', { p_ids: ids }); U.avisar(U.plural(r.marcados, 'error marcado', 'errores marcados') + ' como revisados.'); sErrores(); }
+        catch (err) { avisoError(err); }
+      }));
+      $('#err-viejos').addEventListener('click', (ev) => U.conBoton(ev.currentTarget, async () => {
+        try { const r = await rpc('borrar_errores_viejos'); U.avisar(U.plural(r.borrados, 'error borrado', 'errores borrados') + '.'); sErrores(); }
+        catch (err) { avisoError(err); }
+      }));
+    }
+
     // ======================= Exportar y cierre =======================
     const EXPORTES = [['ventas', 'Ventas'], ['entradas', 'Entradas'], ['rendiciones', 'Rendiciones'], ['movimientos', 'Movimientos de rendición'], ['ingresos', 'Ingresos en la puerta']];
     async function exportar(tipo) {
@@ -999,7 +1052,7 @@
 
     // ---------------- Navegación ----------------
     const CARGAR = { tablero: sTablero, ventas: sVentas, rrpp: sRrpp, transferencias: sTransferencias, rendicion: sRendicion,
-                     evento: sEvento, auditoria: sAuditoria, exportar: sExportar };
+                     evento: sEvento, auditoria: sAuditoria, errores: sErrores, exportar: sExportar };
     function irA() {
       const s = (location.hash || '#tablero').slice(1);
       const sec = CARGAR[s] ? s : 'tablero';

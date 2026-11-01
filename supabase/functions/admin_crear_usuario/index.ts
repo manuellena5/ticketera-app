@@ -1,26 +1,39 @@
 // Edge Function admin_crear_usuario
 // Crea usuarios (RRPP, puerta, caja, admin) y restablece contraseñas.
-// - Verifica que quien llama sea admin activo (con SU token, vía mi_perfil).
-// - Usa la service role SOLO acá, desde los secrets de la función. Nunca va al frontend.
-// - La lógica de datos (perfil, habilitación en el evento, auditoría) está en SQL:
-//   public.admin_registrar_usuario y public.admin_clave_temporal (solo service_role).
+// - Verifica ELLA MISMA que quien llama sea admin activo (con su token, vía
+//   mi_perfil). Por eso se despliega con "Verify JWT" DESACTIVADO: si el
+//   gateway verifica el JWT, rechaza el preflight de CORS (OPTIONS, que no
+//   lleva token) y el navegador bloquea la llamada.
+// - Usa la service role SOLO acá (Supabase la pasa como variable). Nunca va
+//   al frontend.
+// - La lógica de datos está en SQL: admin_registrar_usuario y
+//   admin_clave_temporal (solo service_role). Los errores técnicos se
+//   guardan en errores_tecnicos (registrar_error_servidor).
 //
-// Despliegue:
-//   supabase functions deploy admin_crear_usuario
-//   supabase secrets set AUTH_DOMAIN=usuarios.ticketera-app.com.ar ORIGENES_PERMITIDOS=https://<usuario>.github.io
-// (SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY ya los provee Supabase.)
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
-
-const URL_PROYECTO = Deno.env.get('SUPABASE_URL')!;
-const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const DOMINIO = Deno.env.get('AUTH_DOMAIN') ?? 'usuarios.ticketera-app.com.ar';
-const ORIGENES = (Deno.env.get('ORIGENES_PERMITIDOS') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+// Despliegue (panel): Edge Functions → admin_crear_usuario → pegar este
+// archivo → Deploy, y en Details/Settings desactivar "Verify JWT".
+// Secrets: AUTH_DOMAIN y ORIGENES_PERMITIDOS (opcional).
+// CLI: supabase functions deploy admin_crear_usuario --no-verify-jwt
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const USUARIO = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 const ROLES = ['admin', 'rrpp', 'puerta', 'caja'];
 
-// Contraseña temporal legible (sin letras que se confunden).
+function cors(req: Request): Record<string, string> {
+  const origen = req.headers.get('Origin') ?? '';
+  const permitidos = (Deno.env.get('ORIGENES_PERMITIDOS') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  // Sin lista configurada se acepta cualquier origen: igual hace falta el token de un admin.
+  const permitido = permitidos.length === 0 ? '*' : (permitidos.includes(origen) ? origen : permitidos[0]);
+  return {
+    'Access-Control-Allow-Origin': permitido,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-region',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  };
+}
+
+// Contraseña temporal legible (sin letras que se confunden), ej. "kmtr-4829".
 function claveTemporal(): string {
   const letras = 'abcdefghjkmnpqrstuvwxyz';
   const numeros = '23456789';
@@ -29,83 +42,104 @@ function claveTemporal(): string {
   for (let i = 0; i < 4; i++) s += letras[r[i] % letras.length];
   s += '-';
   for (let i = 4; i < 8; i++) s += numeros[r[i] % numeros.length];
-  return s;   // ej. "kmtr-4829"
-}
-
-function cors(origen: string | null): Record<string, string> {
-  const permitido = origen && (ORIGENES.length === 0 || ORIGENES.includes(origen)) ? origen : (ORIGENES[0] ?? '*');
-  return {
-    'Access-Control-Allow-Origin': permitido,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin',
-  };
+  return s;
 }
 
 Deno.serve(async (req) => {
-  const h = cors(req.headers.get('Origin'));
+  const h = cors(req);
+  // 1) Preflight de CORS: siempre 200, antes de cualquier otra cosa.
+  if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: h });
+
   const responder = (status: number, cuerpo: unknown) =>
     new Response(JSON.stringify(cuerpo), { status, headers: { ...h, 'Content-Type': 'application/json' } });
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
-  if (req.method !== 'POST') return responder(405, { mensaje: 'No permitido.' });
 
-  const autorizacion = req.headers.get('Authorization') ?? '';
-  if (!autorizacion.startsWith('Bearer ')) return responder(401, { mensaje: 'Tenés que ingresar de nuevo.' });
+  let servicio: ReturnType<typeof createClient> | null = null;
+  let adminId: string | null = null;
+  const registrarError = async (mensaje: string, detalle: Record<string, unknown> = {}) => {
+    try {
+      if (servicio) await servicio.rpc('registrar_error_servidor', { p_datos: { origen: 'edge', pantalla: 'admin_crear_usuario', mensaje, detalle }, p_usuario: adminId });
+    } catch (_) { /* nada */ }
+  };
 
-  // 1) ¿Quién llama? (con su propio token: respeta RLS y "activo")
-  const cliente = createClient(URL_PROYECTO, ANON, {
-    global: { headers: { Authorization: autorizacion } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: yo } = await cliente.auth.getUser();
-  const { data: perfil } = await cliente.rpc('mi_perfil');
-  const fila = Array.isArray(perfil) ? perfil[0] : perfil;
-  if (!yo?.user || !fila || fila.rol !== 'admin') return responder(403, { mensaje: 'No tenés permiso para hacer esto.' });
-  const adminId = yo.user.id;
+  try {
+    if (req.method !== 'POST') return responder(405, { mensaje: 'No permitido.' });
 
-  let cuerpo: Record<string, unknown>;
-  try { cuerpo = await req.json(); } catch { return responder(400, { mensaje: 'Algo salió mal. Probá de nuevo.' }); }
-
-  const servicio = createClient(URL_PROYECTO, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
-
-  if (cuerpo.accion === 'crear') {
-    const nombre = String(cuerpo.nombre ?? '').trim();
-    const usuario = String(cuerpo.usuario ?? '').trim().toLowerCase();
-    const rol = String(cuerpo.rol ?? '');
-    if (nombre.length < 3) return responder(400, { mensaje: 'Escribí el nombre y apellido.' });
-    if (!USUARIO.test(usuario)) return responder(400, { mensaje: 'El usuario tiene que tener de 3 a 30 letras o números, sin espacios.' });
-    if (!ROLES.includes(rol)) return responder(400, { mensaje: 'Elegí el tipo de usuario.' });
-
-    const clave = claveTemporal();
-    const { data: creado, error } = await servicio.auth.admin.createUser({
-      email: `${usuario}@${DOMINIO}`, password: clave, email_confirm: true,
-    });
-    if (error || !creado?.user) {
-      const existe = /already|registered|exists/i.test(error?.message ?? '');
-      return responder(existe ? 409 : 400, { mensaje: existe ? 'Ese usuario ya existe. Elegí otro.' : 'No se pudo crear el usuario.' });
+    const URL_PROYECTO = Deno.env.get('SUPABASE_URL');
+    const ANON = Deno.env.get('SUPABASE_ANON_KEY');
+    const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const DOMINIO = Deno.env.get('AUTH_DOMAIN') ?? 'usuarios.ticketera-app.com.ar';
+    if (!URL_PROYECTO || !ANON || !SERVICE) {
+      return responder(500, { mensaje: 'La función de usuarios no está bien configurada. Avisale a quien administra la app.' });
     }
-    const { error: e2 } = await servicio.rpc('admin_registrar_usuario', {
-      p_admin: adminId, p_user: creado.user.id, p_nombre: nombre, p_usuario: usuario,
-      p_telefono: cuerpo.telefono ?? null, p_pueblo: cuerpo.pueblo ?? null, p_rol: rol,
+    servicio = createClient(URL_PROYECTO, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
+
+    const autorizacion = req.headers.get('Authorization') ?? '';
+    if (!autorizacion.startsWith('Bearer ')) return responder(401, { mensaje: 'Tenés que ingresar de nuevo.' });
+
+    // 2) ¿Quién llama? Con su propio token (respeta "activo" y el rol de perfiles).
+    const cliente = createClient(URL_PROYECTO, ANON, {
+      global: { headers: { Authorization: autorizacion } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    if (e2) {
-      await servicio.auth.admin.deleteUser(creado.user.id);   // no dejar usuarios a medias
-      return responder(400, { mensaje: e2.code === 'P0001' ? e2.message : 'No se pudo crear el usuario.' });
+    const { data: yo } = await cliente.auth.getUser(autorizacion.slice(7));
+    const { data: perfil } = await cliente.rpc('mi_perfil');
+    const fila = Array.isArray(perfil) ? perfil[0] : perfil;
+    if (!yo?.user || !fila || fila.rol !== 'admin') return responder(403, { mensaje: 'No tenés permiso para hacer esto.' });
+    adminId = yo.user.id;
+
+    let cuerpo: Record<string, unknown>;
+    try { cuerpo = await req.json(); } catch { return responder(400, { mensaje: 'Algo salió mal. Probá de nuevo.' }); }
+
+    if (cuerpo.accion === 'crear') {
+      const nombre = String(cuerpo.nombre ?? '').trim();
+      const usuario = String(cuerpo.usuario ?? '').trim().toLowerCase();
+      const rol = String(cuerpo.rol ?? '');
+      if (nombre.length < 3) return responder(400, { mensaje: 'Escribí el nombre y apellido.' });
+      if (!USUARIO.test(usuario)) return responder(400, { mensaje: 'El usuario tiene que tener de 3 a 30 letras o números, sin espacios.' });
+      if (!ROLES.includes(rol)) return responder(400, { mensaje: 'Elegí el tipo de usuario.' });
+
+      const clave = claveTemporal();
+      const { data: creado, error } = await servicio.auth.admin.createUser({
+        email: `${usuario}@${DOMINIO}`, password: clave, email_confirm: true,
+      });
+      if (error || !creado?.user) {
+        const existe = /already|registered|exists/i.test(error?.message ?? '');
+        if (!existe) await registrarError('createUser: ' + (error?.message ?? 'sin usuario'), { usuario });
+        return responder(existe ? 409 : 400, { mensaje: existe ? 'Ese usuario ya existe. Elegí otro.' : 'No se pudo crear el usuario.' });
+      }
+      const { error: e2 } = await servicio.rpc('admin_registrar_usuario', {
+        p_admin: adminId, p_user: creado.user.id, p_nombre: nombre, p_usuario: usuario,
+        p_telefono: cuerpo.telefono ?? null, p_pueblo: cuerpo.pueblo ?? null, p_rol: rol,
+      });
+      if (e2) {
+        await servicio.auth.admin.deleteUser(creado.user.id);   // no dejar usuarios a medias
+        if (e2.code !== 'P0001') await registrarError('admin_registrar_usuario: ' + e2.message, { code: e2.code, usuario });
+        return responder(400, { mensaje: e2.code === 'P0001' ? e2.message : 'No se pudo crear el usuario.' });
+      }
+      return responder(200, { usuario, clave });
     }
-    return responder(200, { usuario, clave });
-  }
 
-  if (cuerpo.accion === 'restablecer') {
-    const id = String(cuerpo.user_id ?? '');
-    const { data: p } = await servicio.from('perfiles').select('usuario').eq('user_id', id).maybeSingle();
-    if (!p) return responder(404, { mensaje: 'No encontramos ese usuario.' });
-    const clave = claveTemporal();
-    const { error } = await servicio.auth.admin.updateUserById(id, { password: clave });
-    if (error) return responder(400, { mensaje: 'No se pudo cambiar la contraseña.' });
-    const { error: e2 } = await servicio.rpc('admin_clave_temporal', { p_admin: adminId, p_user: id });
-    if (e2) return responder(400, { mensaje: 'No se pudo cambiar la contraseña.' });
-    return responder(200, { usuario: p.usuario, clave });
-  }
+    if (cuerpo.accion === 'restablecer') {
+      const id = String(cuerpo.user_id ?? '');
+      const { data: p } = await servicio.from('perfiles').select('usuario').eq('user_id', id).maybeSingle();
+      if (!p) return responder(404, { mensaje: 'No encontramos ese usuario.' });
+      const clave = claveTemporal();
+      const { error } = await servicio.auth.admin.updateUserById(id, { password: clave });
+      if (error) {
+        await registrarError('updateUserById: ' + error.message);
+        return responder(400, { mensaje: 'No se pudo cambiar la contraseña.' });
+      }
+      const { error: e2 } = await servicio.rpc('admin_clave_temporal', { p_admin: adminId, p_user: id });
+      if (e2) {
+        await registrarError('admin_clave_temporal: ' + e2.message, { code: e2.code });
+        return responder(400, { mensaje: 'No se pudo cambiar la contraseña.' });
+      }
+      return responder(200, { usuario: (p as { usuario: string }).usuario, clave });
+    }
 
-  return responder(400, { mensaje: 'Algo salió mal. Probá de nuevo.' });
+    return responder(400, { mensaje: 'Algo salió mal. Probá de nuevo.' });
+  } catch (err) {
+    await registrarError('Excepción: ' + String((err as Error)?.message ?? err), { stack: String((err as Error)?.stack ?? '').slice(0, 1500) });
+    return responder(500, { mensaje: 'Algo salió mal. Probá de nuevo en un momento.' });
+  }
 });

@@ -13,6 +13,7 @@ const ARCHIVOS = [
   'js/config.js',
   'js/util.js',
   'js/api.js',
+  'js/log.js',
   'js/app.js',
   'js/rrpp.js',
   'js/puerta-comun.js',

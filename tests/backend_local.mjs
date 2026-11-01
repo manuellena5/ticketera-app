@@ -77,6 +77,16 @@ function sesion(u) {
            refresh_token: firmar({ sub: u.id, exp: ahora + 86400, tipo: 'refresh' }), user };
 }
 
+function claveTemporal() {
+  const letras = 'abcdefghjkmnpqrstuvwxyz', numeros = '23456789';
+  const r = randomBytes(8);
+  let s = '';
+  for (let i = 0; i < 4; i++) s += letras[r[i] % letras.length];
+  s += '-';
+  for (let i = 4; i < 8; i++) s += numeros[r[i] % numeros.length];
+  return s;
+}
+
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*',
                'access-control-expose-headers': '*' };
 
@@ -180,6 +190,48 @@ export async function instalarSupabase(contexto, pool) {
     }
   }
 
+  // Emulación de la Edge Function admin_crear_usuario: mismos pasos y las
+  // mismas funciones SQL (admin_registrar_usuario / admin_clave_temporal).
+  async function funcionUsuarios(route, req) {
+    const claims = verificar((req.headers()['authorization'] || '').replace(/^Bearer /, ''));
+    if (!claims) return json(route, 401, { mensaje: 'Tenés que ingresar de nuevo.' });
+    const yo = (await pool.query(`select rol, activo from perfiles where user_id = $1`, [claims.sub])).rows[0];
+    if (!yo || !yo.activo || yo.rol !== 'admin') return json(route, 403, { mensaje: 'No tenés permiso para hacer esto.' });
+    const cuerpo = JSON.parse(req.postData() || '{}');
+    registro.funciones = (registro.funciones || []).concat([cuerpo]);
+    const clave = claveTemporal();
+    const comoServicio = async (sql, params) => {
+      const c = await pool.connect();
+      try { await c.query('begin'); await c.query('set local role service_role'); const r = await c.query(sql, params); await c.query('commit'); return r; }
+      catch (err) { await c.query('rollback').catch(() => {}); throw err; }
+      finally { c.release(); }
+    };
+    if (cuerpo.accion === 'crear') {
+      const usuario = String(cuerpo.usuario || '').trim().toLowerCase();
+      if (String(cuerpo.nombre || '').trim().length < 3) return json(route, 400, { mensaje: 'Escribí el nombre y apellido.' });
+      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(usuario)) return json(route, 400, { mensaje: 'El usuario tiene que tener de 3 a 30 letras o números, sin espacios.' });
+      const email = usuario + '@usuarios.ticketera-app.com.ar';
+      if ((await pool.query('select 1 from auth.users where email = $1', [email])).rows[0]) return json(route, 409, { mensaje: 'Ese usuario ya existe. Elegí otro.' });
+      const id = (await pool.query(`insert into auth.users (id, email, encrypted_password, aud, role) values (gen_random_uuid(), $1, extensions.crypt($2, extensions.gen_salt('bf', 4)), 'authenticated', 'authenticated') returning id`, [email, clave])).rows[0].id;
+      try {
+        await comoServicio('select public.admin_registrar_usuario($1, $2, $3, $4, $5, $6, $7)',
+          [claims.sub, id, cuerpo.nombre, usuario, cuerpo.telefono || null, cuerpo.pueblo || null, cuerpo.rol]);
+      } catch (err) {
+        await pool.query('delete from auth.users where id = $1', [id]);
+        return json(route, 400, { mensaje: err.code === 'P0001' ? err.message : 'No se pudo crear el usuario.' });
+      }
+      return json(route, 200, { usuario, clave });
+    }
+    if (cuerpo.accion === 'restablecer') {
+      const p = (await pool.query('select usuario from perfiles where user_id = $1', [cuerpo.user_id])).rows[0];
+      if (!p) return json(route, 404, { mensaje: 'No encontramos ese usuario.' });
+      await pool.query(`update auth.users set encrypted_password = extensions.crypt($1, extensions.gen_salt('bf', 4)) where id = $2`, [clave, cuerpo.user_id]);
+      await comoServicio('select public.admin_clave_temporal($1, $2)', [claims.sub, cuerpo.user_id]);
+      return json(route, 200, { usuario: p.usuario, clave });
+    }
+    return json(route, 400, { mensaje: 'Algo salió mal. Probá de nuevo.' });
+  }
+
   // Las rutas emuladas responden aunque el contexto esté "sin conexión":
   // se corta a mano para que el modo avión sea real.
   const setOffline = contexto.setOffline.bind(contexto);
@@ -193,6 +245,7 @@ export async function instalarSupabase(contexto, pool) {
     try {
       if (url.pathname.startsWith('/auth/v1/')) return await auth(route, req, url);
       if (url.pathname.startsWith('/rest/v1/rpc/')) return await rpc(route, req, url);
+      if (url.pathname === '/functions/v1/admin_crear_usuario') return await funcionUsuarios(route, req);
       return json(route, 404, { message: 'no emulado' });
     } catch (err) {
       console.error('backend_local:', err);

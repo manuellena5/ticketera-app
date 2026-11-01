@@ -178,7 +178,7 @@ select pruebas.ok(pruebas.cuenta('select * from public.auditoria') = 1, 'admin v
 select pruebas.ok(pruebas.cuenta('select * from public.config_club') = 1, 'admin lee config_club');
 select pruebas.falla($$select * from public.secretos_evento$$, '42501', 'ni el admin lee la sal directo');
 select pruebas.falla($$update public.eventos set tope_entradas = 1$$, '42501', 'admin tampoco escribe directo (usa RPC)');
-select pruebas.falla($$select public.anular_venta('00000000-0000-4000-8000-0000000000b1', 'x')$$, 'P0001', 'admin pasa el control de rol (pendiente fase 4)', 'no_disponible');
+select pruebas.ok(public.anular_venta('00000000-0000-4000-8000-0000000000b1', 'x') ->> 'estado' = 'anulada', 'admin pasa el control de rol (y puede anular)');
 reset role;
 
 \echo

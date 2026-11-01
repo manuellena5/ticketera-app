@@ -19,6 +19,7 @@ const ARCHIVOS = [
   'js/escaner.js',
   'js/puerta.js',
   'js/caja.js',
+  'js/admin.js',
   'vendor/jsqr/jsQR.js',
   'js/entrada.js',
   'js/qr.js',

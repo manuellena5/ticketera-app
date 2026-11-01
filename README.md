@@ -21,10 +21,13 @@ js/puerta-comun.js    IndexedDB, reloj corregido con el servidor, estado de sinc
 js/escaner.js         Cámara + lectura de QR (BarcodeDetector o jsQR)
 js/puerta.js          App de Puerta (preparar lista, escáner sin conexión, buscar, sincronizar)
 js/caja.js            App de Caja (venta en puerta con pulsera, caja de puerta, ventas sin señal)
+js/admin.js           Panel de administración (tablero, ventas, RRPP, transferencias, rendición,
+                      evento y tandas, auditoría, exportes y cierre)
 js/entrada.js         Página del comprador (DNI, QR, guardar imagen, pasar a otra persona)
 js/qr.js              Dibujo del QR y de la imagen PNG de la entrada
 vendor/               Librerías copiadas al repo (sin CDN): supabase-js, qrcode-generator, jsQR, Figtree
 supabase/migrations/  Esquema, seguridad (RLS + revocaciones) y RPC
+supabase/functions/   Edge Function admin_crear_usuario (alta de usuarios y contraseñas temporales)
 supabase/seed.sql     Datos de PRUEBA (evento, tandas, usuarios)
 tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 ```
@@ -42,6 +45,11 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
   buscar por DNI o apellido, deshacer ingreso (queda en auditoría), sincronización cada 10 s con la
   última sincronización siempre visible, venta en puerta que frena en el tope con señal y, sin señal,
   guarda las ventas y las sube después aunque pasen el tope (con aviso y auditoría).
+- **Fase 4** (admin): lista. Tablero con alertas, ventas (buscar, filtrar, reenviar, anular con motivo,
+  cortesías), RRPP (comisión, límite fijo o %, alta con "Enviar acceso por WhatsApp", nueva contraseña,
+  desactivar), transferencias (confirmar y CSV), rendición según la sección 7 con comprobante PNG,
+  evento/tandas/datos para transferir, auditoría legible, exportes CSV para Excel es-AR, resumen de
+  cierre y anonimización manual de DNI y teléfonos.
 
 ## Seguridad en dos líneas
 
@@ -61,7 +69,16 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 4. **Settings → API**: copiar *Project URL* y *anon public key* a `js/config.js`, y poner el mismo host
    en el `connect-src` del Content-Security-Policy de `index.html` y `entrada.html`
    (`npm run test:estatico` avisa si no coinciden).
-5. Plan: el gratis se pausa tras ~7 días sin uso. Pasar a **Pro** el mes de la venta.
+5. **Edge Function de usuarios** (para crear usuarios y mandar el acceso por WhatsApp desde el panel):
+   ```bash
+   supabase functions deploy admin_crear_usuario
+   supabase secrets set AUTH_DOMAIN=usuarios.ticketera-app.com.ar ORIGENES_PERMITIDOS=https://<usuario>.github.io
+   ```
+   La service role la usa solo la función (Supabase se la da sola); nunca va al frontend.
+   Mientras no esté instalada, los usuarios se pueden crear desde el panel de Supabase (Auth → Add user,
+   con mail `<usuario>@usuarios.ticketera-app.com.ar`) y su perfil con `admin_registrar_usuario`.
+6. **Primer admin**: crear el usuario en Auth y su fila en `perfiles` con `rol = 'admin'` desde el SQL Editor.
+7. Plan: el gratis se pausa tras ~7 días sin uso. Pasar a **Pro** el mes de la venta.
 
 ## Probar en local
 

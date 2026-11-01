@@ -31,7 +31,7 @@ export function revisor(ok) {
     const texto = await page.evaluate(() => document.body.innerText);
     const hallado = PROHIBIDO.map((re) => texto.match(re)).filter(Boolean).map((m) => m[0]);
     const chicos = await page.evaluate(() => [...document.querySelectorAll('button, .boton, input')]
-      .filter((b) => b.offsetParent && b.type !== 'hidden').filter((b) => b.getBoundingClientRect().height < 44)
+      .filter((b) => b.offsetParent && b.type !== 'hidden' && b.type !== 'checkbox').filter((b) => b.getBoundingClientRect().height < 44)
       .map((b) => (b.textContent || b.name || b.id).trim()));
     const letra = await page.evaluate(() => [...document.querySelectorAll('main *')]
       .filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))

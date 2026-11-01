@@ -12,24 +12,26 @@
 //
 // Despliegue (panel): Edge Functions → admin_crear_usuario → pegar este
 // archivo → Deploy, y en Details/Settings desactivar "Verify JWT".
-// Secrets: AUTH_DOMAIN y ORIGENES_PERMITIDOS (opcional).
+// Secret: AUTH_DOMAIN (opcional; por defecto usuarios.ticketera-app.com.ar).
+// Diagnóstico: abrir https://<proyecto>.supabase.co/functions/v1/admin_crear_usuario
+// en el navegador tiene que mostrar "La función de usuarios está funcionando.".
 // CLI: supabase functions deploy admin_crear_usuario --no-verify-jwt
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const USUARIO = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 const ROLES = ['admin', 'rrpp', 'puerta', 'caja'];
 
+// CORS permisivo a propósito: la seguridad no depende del origen sino del
+// token de un admin activo (que se verifica abajo). Se devuelven los
+// encabezados que el navegador pide, así ningún encabezado nuevo de
+// supabase-js rompe el preflight.
 function cors(req: Request): Record<string, string> {
-  const origen = req.headers.get('Origin') ?? '';
-  const permitidos = (Deno.env.get('ORIGENES_PERMITIDOS') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  // Sin lista configurada se acepta cualquier origen: igual hace falta el token de un admin.
-  const permitido = permitidos.length === 0 ? '*' : (permitidos.includes(origen) ? origen : permitidos[0]);
+  const pedidos = req.headers.get('Access-Control-Request-Headers');
   return {
-    'Access-Control-Allow-Origin': permitido,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-region',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': pedidos || 'authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-region',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     'Access-Control-Max-Age': '86400',
-    'Vary': 'Origin',
   };
 }
 
@@ -62,6 +64,15 @@ Deno.serve(async (req) => {
   };
 
   try {
+    // Abrir la URL en el navegador (GET) sirve de diagnóstico: si se ve este
+    // mensaje, la función está desplegada, arranca y "Verify JWT" está apagado.
+    if (req.method === 'GET') {
+      return responder(200, {
+        mensaje: 'La función de usuarios está funcionando.',
+        configurada: Boolean(Deno.env.get('SUPABASE_URL') && Deno.env.get('SUPABASE_ANON_KEY') && Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')),
+        dominio: Deno.env.get('AUTH_DOMAIN') ?? 'usuarios.ticketera-app.com.ar (por defecto)',
+      });
+    }
     if (req.method !== 'POST') return responder(405, { mensaje: 'No permitido.' });
 
     const URL_PROYECTO = Deno.env.get('SUPABASE_URL');

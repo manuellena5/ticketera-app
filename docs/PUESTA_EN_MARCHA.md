@@ -34,8 +34,20 @@ Proyecto: `https://nkeijeavrkdhtkvkgcvh.supabase.co` (ya cargado en `js/config.j
    Es necesario: el navegador primero hace una consulta previa sin token (CORS) y, si el gateway exige
    el token, la rechaza y aparece el error *"Response to preflight request doesn't pass access control
    check"*. La función igual verifica ella misma que quien llama sea un admin activo.
-4. *Edge Functions → Secrets*: `AUTH_DOMAIN` = `usuarios.ticketera-app.com.ar` y (opcional)
-   `ORIGENES_PERMITIDOS` = `https://manuellena5.github.io`.
+4. (Opcional) *Edge Functions → Secrets*: `AUTH_DOMAIN` = `usuarios.ticketera-app.com.ar` (es el valor por defecto).
+   `ORIGENES_PERMITIDOS` ya no se usa: se puede borrar.
+
+### Prueba de diagnóstico
+
+Abrir en el navegador: <https://nkeijeavrkdhtkvkgcvh.supabase.co/functions/v1/admin_crear_usuario>
+
+| Lo que aparece | Qué significa | Qué hacer |
+|---|---|---|
+| `"La función de usuarios está funcionando."` con `"configurada": true` | Todo bien | Crear el usuario desde el panel |
+| `Missing authorization header` o un `401` | "Verify JWT" sigue activado | Desactivarlo en la configuración de la función y guardar |
+| `Requested function was not found` o `NOT_FOUND` | La función tiene otro nombre | Tiene que llamarse exactamente `admin_crear_usuario` (con guiones bajos) |
+| `BOOT_ERROR`, `Function failed to start` o un `500`/`503` | La función no arranca | Volver a pegar el código completo de `index.ts` y desplegar; mirar *Logs* de la función |
+| `"configurada": false` | Faltan variables de Supabase | Revisar que el proyecto tenga las claves *anon* y *service_role* (Legacy API keys) habilitadas |
 
 Con la CLI: `supabase functions deploy admin_crear_usuario --no-verify-jwt --project-ref nkeijeavrkdhtkvkgcvh`
 (o usa `supabase/config.toml`, que ya tiene `verify_jwt = false`).

@@ -80,8 +80,8 @@ La configuración inicial de producción (primer admin, evento y tandas) está e
    (`npm run test:estatico` avisa si no coinciden).
 5. **Edge Function de usuarios** (para crear usuarios y mandar el acceso por WhatsApp desde el panel):
    ```bash
-   supabase functions deploy admin_crear_usuario
-   supabase secrets set AUTH_DOMAIN=usuarios.ticketera-app.com.ar ORIGENES_PERMITIDOS=https://<usuario>.github.io
+   supabase functions deploy admin_crear_usuario --no-verify-jwt
+   supabase secrets set AUTH_DOMAIN=usuarios.ticketera-app.com.ar
    ```
    La service role la usa solo la función (Supabase se la da sola); nunca va al frontend.
    Mientras no esté instalada, los usuarios se pueden crear desde el panel de Supabase (Auth → Add user,

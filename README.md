@@ -17,9 +17,13 @@ js/util.js            plural(), pesos(), fechas, mensajes de error sin jerga
 js/api.js             Cliente de Supabase (solo anon key)
 js/app.js             Arranque, ingreso, cambio de contraseña y ruteo por rol
 js/rrpp.js            App del RRPP (Inicio, Nueva entrada, Entrada lista, Mis ventas, Detalle)
+js/puerta-comun.js    IndexedDB, reloj corregido con el servidor, estado de sincronización, sonido
+js/escaner.js         Cámara + lectura de QR (BarcodeDetector o jsQR)
+js/puerta.js          App de Puerta (preparar lista, escáner sin conexión, buscar, sincronizar)
+js/caja.js            App de Caja (venta en puerta con pulsera, caja de puerta, ventas sin señal)
 js/entrada.js         Página del comprador (DNI, QR, guardar imagen, pasar a otra persona)
 js/qr.js              Dibujo del QR y de la imagen PNG de la entrada
-vendor/               Librerías copiadas al repo (sin CDN): supabase-js, qrcode-generator, Figtree
+vendor/               Librerías copiadas al repo (sin CDN): supabase-js, qrcode-generator, jsQR, Figtree
 supabase/migrations/  Esquema, seguridad (RLS + revocaciones) y RPC
 supabase/seed.sql     Datos de PRUEBA (evento, tandas, usuarios)
 tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
@@ -33,6 +37,11 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 - **Fase 2** (link del comprador): lista. DNI con freno de 5 intentos y bloqueo de 15 minutos, QR por
   entrada, Guardar imagen (PNG), Pasar a otra persona con link individual (`#e=`) que se invalida al
   volver a pasarla.
+- **Fase 3** (puerta y caja): lista. Lista en IndexedDB (solo hashes), escáner offline con resultado
+  en color + sonido + vibración, gana el primer ingreso entre celulares (hora corregida con el servidor),
+  buscar por DNI o apellido, deshacer ingreso (queda en auditoría), sincronización cada 10 s con la
+  última sincronización siempre visible, venta en puerta que frena en el tope con señal y, sin señal,
+  guarda las ventas y las sube después aunque pasen el tope (con aviso y auditoría).
 
 ## Seguridad en dos líneas
 

@@ -295,3 +295,67 @@ p { margin: 0; }
 .pasar .campo + .campo { margin-top: 0; }
 .encabezado__version { white-space: nowrap; }
 .hero__fila { align-items: flex-start; }
+
+/* =====================================================================
+   Fase 3 · Puerta y caja
+   ===================================================================== */
+.cabecera-puerta { display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 14px; padding-top: max(18px, env(safe-area-inset-top)); }
+.cabecera-puerta__titulo { margin: 0; font-size: 22px; font-weight: 800; }
+.cabecera-puerta .hero__dato { color: #D1D5DB; }
+.contador-puerta { display: flex; flex-direction: column; gap: 8px; }
+.contador-puerta__fila { display: flex; justify-content: space-between; align-items: baseline; }
+.contador-puerta__etiqueta { margin: 0; font-size: 16px; color: #D1D5DB; }
+.contador-puerta__dato { margin: 0; font-size: 30px; font-weight: 800; }
+.contador-puerta__dato small { font-size: 16px; font-weight: 500; color: #D1D5DB; }
+.barra-progreso--oscura { height: 8px; background: #374151; border-radius: 4px; }
+.barra-progreso--oscura > span { background: #FB923C; }
+.barra-progreso--oscura > span.barra-aviso { background: var(--alerta); }
+.sync { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+.sync__punto { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.sync--ok { color: #BBF7D0; }
+.sync--ok .sync__punto { background: #22C55E; }
+.sync--alerta { color: #FDE68A; }
+.sync--alerta .sync__punto { background: var(--alerta); }
+
+.escaner { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: #030712; }
+.escaner__camara { position: relative; flex: 1; min-height: 260px; background: #1F2937; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.escaner__camara video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.escaner__marco { position: relative; width: 230px; height: 230px; }
+.escaner__marco span { position: absolute; width: 44px; height: 44px; border: 0 solid #fff; }
+.escaner__marco span:nth-child(1) { left: 0; top: 0; border-left-width: 5px; border-top-width: 5px; border-radius: 10px 0 0 0; }
+.escaner__marco span:nth-child(2) { right: 0; top: 0; border-right-width: 5px; border-top-width: 5px; border-radius: 0 10px 0 0; }
+.escaner__marco span:nth-child(3) { left: 0; bottom: 0; border-left-width: 5px; border-bottom-width: 5px; border-radius: 0 0 0 10px; }
+.escaner__marco span:nth-child(4) { right: 0; bottom: 0; border-right-width: 5px; border-bottom-width: 5px; border-radius: 0 0 10px 0; }
+.escaner__ayuda { position: absolute; top: 14px; left: 0; right: 0; margin: 0; text-align: center; color: #E5E7EB; font-size: 16px; text-shadow: 0 1px 2px #000; }
+.escaner__nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px 14px max(18px, env(safe-area-inset-bottom)); background: var(--texto); }
+.boton--oscuro { background: #1F2937; border-color: #4B5563; color: #fff; }
+
+.resultado { padding: 16px 20px; display: flex; flex-direction: column; gap: 2px; min-height: 124px; }
+.resultado p { margin: 0; }
+.resultado__titulo { font-size: 32px; font-weight: 800; letter-spacing: .02em; line-height: 1.1; }
+.resultado__l1 { font-size: 20px; font-weight: 700; }
+.resultado__l2 { font-size: 17px; }
+.resultado--neutro { background: #111827; color: #D1D5DB; }
+.resultado--ok { background: var(--ok); color: #fff; }
+.resultado--ya { background: var(--alerta); color: var(--texto); }
+.resultado--no { background: var(--error); color: #fff; }
+
+.fila-busqueda { cursor: default; flex-wrap: wrap; }
+.busqueda__acciones { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.boton--peligro-texto { color: var(--error); }
+
+.contador--grande button { height: 60px; font-size: 32px; }
+.contador--grande output { font-size: 36px; }
+.datos-club--grande dd { font-size: 20px; }
+.caja__titulo { font-size: 18px; }
+.caja__grilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.caja__dato { margin: 0; font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+.texto-alerta { color: var(--accion-osc); font-weight: 700; }
+
+.pulseras {
+  min-height: 100vh; min-height: 100dvh; background: var(--ok); color: #fff;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; padding: 24px; text-align: center;
+}
+.pulseras__titulo { margin: 0; font-size: 44px; font-weight: 800; line-height: 1.1; }
+.pulseras__nota { margin: 0; font-size: 18px; max-width: 320px; }
+.pulseras .boton { max-width: 360px; }

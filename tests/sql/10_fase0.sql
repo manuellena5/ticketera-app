@@ -155,7 +155,7 @@ select pruebas.ok(pruebas.cuenta('select * from public.ventas') = 0, 'puerta no 
 select pruebas.ok(pruebas.cuenta('select * from public.entradas') = 0, 'puerta no lee entradas directo');
 select pruebas.falla($$select * from public.datos_transferencia()$$, 'P0001', 'puerta no ve datos de transferencia', 'sin_permiso');
 select pruebas.falla($$select public.venta_puerta(gen_random_uuid(), 1, 'efectivo')$$, 'P0001', 'puerta no vende', 'sin_permiso');
-select pruebas.falla($$select public.descargar_lista_puerta('00000000-0000-4000-8000-0000000000e1')$$, 'P0001', 'puerta pasa el control de rol de la lista (pendiente fase 3)', 'no_disponible');
+select pruebas.ok(public.descargar_lista_puerta('00000000-0000-4000-8000-0000000000e1') ? 'entradas', 'puerta pasa el control de rol de la lista');
 reset role;
 
 \echo
@@ -165,7 +165,7 @@ select pruebas.como(:caja);
 select pruebas.ok(pruebas.cuenta('select * from public.ventas') = 0, 'caja no lee ventas directo');
 select pruebas.ok((select alias from public.datos_transferencia()) = 'CLUB.MITRE.PRUEBA', 'caja ve los datos de transferencia');
 select pruebas.falla($$select public.registrar_ingresos('[]'::jsonb)$$, 'P0001', 'caja no registra ingresos', 'sin_permiso');
-select pruebas.falla($$select public.venta_puerta(gen_random_uuid(), 1, 'efectivo')$$, 'P0001', 'caja pasa el control de rol (pendiente fase 3)', 'no_disponible');
+select pruebas.falla($$select public.venta_puerta(null, 1, 'efectivo')$$, 'P0001', 'caja pasa el control de rol', 'datos');
 reset role;
 
 \echo

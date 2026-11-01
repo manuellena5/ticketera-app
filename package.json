@@ -8,7 +8,7 @@
     "test": "npm run test:sql && npm run test:estatico && npm run test:ui",
     "test:sql": "bash tests/sql/correr.sh",
     "test:estatico": "node tests/ui/revisar_estatico.mjs",
-    "test:ui": "node tests/ui/fase0.mjs && node tests/ui/fase1.mjs && node tests/ui/fase2.mjs"
+    "test:ui": "node tests/ui/fase0.mjs && node tests/ui/fase1.mjs && node tests/ui/fase2.mjs && node tests/ui/fase3.mjs"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",

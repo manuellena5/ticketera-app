@@ -128,6 +128,7 @@
   // Si una RPC dice que la sesión ya no vale (usuario desactivado o vencida).
   async function sesionInvalida(err) {
     U.borrar('entradas-cache-');
+    if (window.KV) window.KV.borrarTodo().catch(() => {});
     try { await API.conSesion().auth.signOut(); } catch (_) { /* nada */ }
     pantallaIngreso(err && err.message ? err.message : 'Tenés que ingresar de nuevo.');
   }

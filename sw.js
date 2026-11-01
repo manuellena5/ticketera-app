@@ -14,6 +14,7 @@ const ARCHIVOS = [
   'js/util.js',
   'js/api.js',
   'js/app.js',
+  'js/rrpp.js',
   'js/entrada.js',
   'vendor/supabase/supabase.js',
   'vendor/fonts/figtree-latin-400-normal.woff2',

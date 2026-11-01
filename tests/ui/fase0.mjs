@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
 const PROHIBIDO = [/[0-9a-f]{8}-[0-9a-f]{4}-/i, /supabase/i,
-  /\b(eventos|tandas|config_club|perfiles|rrpp_evento|ventas|entradas|movimientos_rrpp|auditoria|intentos_link|secretos_evento)\b(?=[_.(])/i,
+  /\b(eventos|tandas|config_club|perfiles|rrpp_evento|ventas|entradas|movimientos_rrpp|auditoria|intentos_link|secretos_evento)\b(?=[_(]|\.[a-z])/i,
   /\b(rpc|jwt|uuid|null|undefined|NaN|P0001|42501)\b/];
 
 let fallas = 0;
@@ -77,7 +77,7 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
 {
   const ctx = await navegador.newContext(MOVIL);
   await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
-    "window.CONFIG = Object.freeze({ SUPABASE_URL: 'https://tu-proyecto.supabase.co', SUPABASE_ANON_KEY: 'clave-publica-de-prueba', AUTH_DOMAIN: 'usuarios.clubdeportivomitre.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: 'https://tu-proyecto.supabase.co', SUPABASE_ANON_KEY: 'clave-publica-de-prueba', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   let emailPedido = null;
   await ctx.route('https://tu-proyecto.supabase.co/auth/v1/token**', async (r) => {
     emailPedido = JSON.parse(r.request().postData() || '{}').email;
@@ -93,7 +93,7 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
   await page.click('button[type=submit]');
   await page.waitForSelector('.aviso--error');
   ok((await page.textContent('.aviso--error')) === 'Usuario o contraseña incorrectos.', 'ingreso fallido: mensaje claro');
-  ok(emailPedido === 'lucia@usuarios.clubdeportivomitre.com.ar', 'el usuario se convierte en el mail interno (minúsculas, sin espacios)');
+  ok(emailPedido === 'lucia@usuarios.ticketera-app.com.ar', 'el usuario se convierte en el mail interno (minúsculas, sin espacios)');
   page.errores = page.errores.filter((e) => !/400/.test(e));   // el 400 simulado lo loguea el navegador
   await revisarPantalla(page, 'ingreso con error');
 

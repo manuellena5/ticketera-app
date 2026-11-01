@@ -68,6 +68,8 @@
     const txt = String(err.message || err);
     if (/fetch|network|Failed to fetch|NetworkError|Load failed/i.test(txt)) return MENSAJES_RED;
     if (/Invalid login credentials/i.test(txt)) return 'Usuario o contraseña incorrectos.';
+    if (/should be different/i.test(txt)) return 'Elegí una contraseña distinta a la que te pasaron.';
+    if (/Password should be|weak|at least/i.test(txt)) return 'La contraseña tiene que tener al menos 8 caracteres.';
     if (/JWT|session|token/i.test(txt)) return 'Tenés que ingresar de nuevo.';
     return MENSAJE_GENERICO;
   }
@@ -81,8 +83,110 @@
     finally { boton.disabled = false; boton.removeAttribute('aria-busy'); }
   }
 
+  // WhatsApp de Argentina para wa.me: "3401 551234", "03401 15 551234",
+  // "+54 9 3401 551234" → "5493401551234". '' si está vacío, null si no sirve.
+  function telWhatsApp(s) {
+    let d = soloDigitos(s);
+    if (!d) return '';
+    if (d.length === 13 && d.startsWith('549')) return d;
+    if (d.length === 12 && d.startsWith('54')) return '549' + d.slice(2);
+    d = d.replace(/^0/, '');
+    if (d.length === 12) {
+      for (const largo of [4, 3, 2]) {          // código de área de 4, 3 o 2 cifras + "15"
+        if (d.substr(largo, 2) === '15') { d = d.slice(0, largo) + d.slice(largo + 2); break; }
+      }
+    }
+    return d.length === 10 ? '549' + d : null;
+  }
+
+  // "viernes 18/12"
+  function diaEvento(fecha) {
+    const p = partes(fecha);
+    return p.weekday + ' ' + p.day + '/' + p.month;
+  }
+  // "Vie 18/12"
+  function diaCorto(fecha) {
+    const p = partes(fecha);
+    return p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1, 3) + ' ' + p.day + '/' + p.month;
+  }
+
+  function primerNombre(nombre) { return String(nombre || '').trim().split(/\s+/)[0] || ''; }
+
+  function nuevaClave() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  }
+
+  let toastTimer = null;
+  function avisar(texto) {
+    let t = document.getElementById('aviso-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'aviso-toast'; t.className = 'aviso-toast'; t.setAttribute('role', 'status');
+      document.body.appendChild(t);
+    }
+    t.textContent = texto; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2500);
+  }
+
+  async function copiar(texto, aviso) {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = texto; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (_) { /* nada */ }
+      ta.remove();
+    }
+    avisar(aviso || 'Copiado.');
+  }
+
+  // Diálogo de confirmación propio (sin window.confirm). Devuelve true/false.
+  function confirmar(texto, si, no) {
+    return new Promise((resolver) => {
+      const d = document.createElement('dialog');
+      d.className = 'dialogo';
+      d.innerHTML = '<p></p><button class="boton boton--principal boton--ancho" value="si"></button>' +
+                    '<button class="boton boton--ancho" value="no"></button>';
+      d.querySelector('p').textContent = texto;
+      d.querySelector('[value=si]').textContent = si || 'Sí';
+      d.querySelector('[value=no]').textContent = no || 'Cancelar';
+      d.addEventListener('click', (ev) => {
+        const b = ev.target.closest('button');
+        if (b) { d.close(b.value); }
+      });
+      d.addEventListener('close', () => { resolver(d.returnValue === 'si'); d.remove(); });
+      document.body.appendChild(d);
+      d.showModal();
+    });
+  }
+
+  function guardar(clave, valor) {
+    try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (_) { /* sin almacenamiento */ }
+  }
+  function leer(clave) {
+    try { return JSON.parse(localStorage.getItem(clave) || 'null'); } catch (_) { return null; }
+  }
+  function borrar(prefijo) {
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith(prefijo)).forEach((k) => localStorage.removeItem(k));
+    } catch (_) { /* nada */ }
+  }
+
+  function esErrorDeRed(err) {
+    if (!navigator.onLine) return true;
+    const txt = String((err && err.message) || err || '');
+    return /fetch|network|Failed to fetch|NetworkError|Load failed/i.test(txt);
+  }
+
   window.U = Object.freeze({
-    plural, miles, pesos, diaMes, hora, fechaCorta, fechaEvento,
-    soloDigitos, dniValido, escaparHTML, mensajeDeError, conBoton,
+    plural, miles, pesos, diaMes, hora, fechaCorta, fechaEvento, diaEvento, diaCorto,
+    soloDigitos, dniValido, escaparHTML, mensajeDeError, conBoton, telWhatsApp, primerNombre,
+    nuevaClave, avisar, copiar, confirmar, guardar, leer, borrar, esErrorDeRed,
   });
 })();

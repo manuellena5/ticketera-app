@@ -15,13 +15,20 @@ js/version.js         APP_VERSION y CACHE_NAME: se cambian SOLO acá
 js/config.js          URL del proyecto, anon key y dominio interno de usuarios
 js/util.js            plural(), pesos(), fechas, mensajes de error sin jerga
 js/api.js             Cliente de Supabase (solo anon key)
-js/app.js             Arranque, ingreso y ruteo por rol
+js/app.js             Arranque, ingreso, cambio de contraseña y ruteo por rol
+js/rrpp.js            App del RRPP (Inicio, Nueva entrada, Entrada lista, Mis ventas, Detalle)
 js/entrada.js         Página del comprador
 vendor/               Librerías copiadas al repo (sin CDN): supabase-js, Figtree
 supabase/migrations/  Esquema, seguridad (RLS + revocaciones) y RPC
 supabase/seed.sql     Datos de PRUEBA (evento, tandas, usuarios)
 tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 ```
+
+## Estado
+
+- **Fase 0** (base): lista.
+- **Fase 1** (RRPP): lista. `emitir_venta` con tanda vigente, stock, límite por RRPP, tope general,
+  comisión congelada e idempotencia; Inicio, Nueva entrada, Entrada lista con WhatsApp, Mis ventas y Detalle.
 
 ## Seguridad en dos líneas
 
@@ -45,7 +52,7 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 
 ## Probar en local
 
-Requisitos: Node 18+, PostgreSQL 14+ instalado (solo los binarios; el script levanta uno descartable)
+Requisitos: Node 18+ (`npm install` para el driver de Postgres de los tests), PostgreSQL 14+ instalado (solo los binarios; el script levanta uno descartable)
 y Playwright con Chromium.
 
 ```bash
@@ -53,6 +60,8 @@ npm test               # todo
 npm run test:sql       # RLS, revocaciones y roles sobre un Postgres local que emula Supabase
 npm run test:estatico  # CSP, archivos del service worker, claves filtradas
 npm run test:ui        # pantallas en Chromium headless (sin IDs ni jerga, 48 px, modo avión)
+                       # fase 1: de punta a punta contra un Postgres local con las migraciones
+                       # reales; Auth y RPC de Supabase se emulan en tests/backend_local.mjs
 npm run servir         # http://127.0.0.1:8080/
 ```
 

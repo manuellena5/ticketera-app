@@ -8,6 +8,6 @@ window.CONFIG = Object.freeze({
   SUPABASE_ANON_KEY: 'TU-ANON-KEY',
   // Dominio del mail interno de cada usuario (<usuario>@<dominio>).
   // Tiene que coincidir con el de supabase/seed.sql y la Edge Function.
-  AUTH_DOMAIN: 'usuarios.clubdeportivomitre.com.ar',
+  AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar',
   NOMBRE_CLUB: 'Club Deportivo Mitre',
 });

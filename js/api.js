@@ -36,7 +36,11 @@
   // Llama a una RPC y devuelve data o tira el error tal cual (lo traduce U.mensajeDeError).
   async function rpc(nombre, args, { anonimo = false } = {}) {
     const c = anonimo ? publico() : conSesion();
-    const { data, error } = await c.rpc(nombre, args || {});
+    let consulta = c.rpc(nombre, args || {});
+    // Sin reintentos automáticos: sin señal se avisa al instante, y los
+    // reintentos de una venta los maneja la app con la misma clave.
+    if (typeof consulta.retry === 'function') consulta = consulta.retry(false);
+    const { data, error } = await consulta;
     if (error) throw error;
     return data;
   }

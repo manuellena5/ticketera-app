@@ -18,7 +18,7 @@
 
 do $$
 declare
-  dominio constant text := 'usuarios.clubdeportivomitre.com.ar';
+  dominio constant text := 'usuarios.ticketera-app.com.ar';
   clave   constant text := 'prueba1234';
   u record;
 begin
@@ -66,7 +66,7 @@ insert into public.eventos (id, nombre, artista, fecha, lugar, tope_entradas, av
                             max_por_venta, cierre_venta_rrpp, estado)
 values ('00000000-0000-4000-8000-0000000000e1',
         'Baile con Simón Aguirre', 'Simón Aguirre',
-        '2026-12-18 23:59:00-03', 'Club Deportivo Mitre',
+        '2026-12-18 23:59:00-03', null,   -- el lugar lo carga el admin
         1000, 950, 6, '2026-12-15 23:59:59-03', 'venta')
 on conflict (id) do nothing;
 

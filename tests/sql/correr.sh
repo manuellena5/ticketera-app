@@ -38,6 +38,7 @@ else
   TESTS=("$RAIZ"/tests/sql/[1-9]*.sql)
 fi
 
+cd "$RAIZ"
 for t in "${TESTS[@]}"; do
   echo
   echo "=== $(basename "$t")"

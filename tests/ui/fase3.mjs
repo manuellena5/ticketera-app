@@ -100,6 +100,7 @@ try {
   const ctxA = await contexto();
   const pA = await ingresar(ctxA, 'puerta1');
   ok(/Descargá la lista/.test(await texto(pA, 'main')), 'sin lista: pide descargarla');
+  await pA.waitForSelector('#adentro >> text=/ 1.000', { timeout: 10000 }).catch(() => {});   // llega con la primera sincronización
   ok(/Adentro 0 \/ 1\.000/.test(await texto(pA, 'header')), 'contador "Adentro: 0 / 1.000"');
   await revisar(pA, 'preparar sin lista');
   await pA.click('#descargar');
@@ -131,7 +132,7 @@ try {
   await q(`update ventas set estado = 'anulada' where id = $1`, [ventas[3].venta.ref]);
   await pA.goBack();
   await pA.click('#sincronizar');
-  await pA.waitForSelector('#aviso-toast:not([hidden])');
+  await pA.waitForSelector('#aviso-toast:not([hidden]) >> text=Sincronizado.');
   await pA.click('#abrir');
   await pA.waitForFunction(() => document.querySelector('#video').readyState >= 2);
   r = await escanear(pA, await cod(3, 1));
@@ -166,7 +167,7 @@ try {
   const horaA = (await q('select ingreso_en from entradas where codigo = $1', [cC]))[0].ingreso_en;
   await pB.goBack();
   await pB.click('#sincronizar');
-  await pB.waitForSelector('#aviso-toast:not([hidden])');
+  await pB.waitForSelector('#aviso-toast:not([hidden]) >> text=Sincronizado.');
   await pB.click('#abrir');
   await pB.waitForFunction(() => document.querySelector('#video').readyState >= 2);
   r = await escanear(pB, cC);

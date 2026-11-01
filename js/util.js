@@ -144,7 +144,13 @@
 
   async function copiar(texto, aviso) {
     try {
-      await navigator.clipboard.writeText(texto);
+      if (!navigator.clipboard) throw new Error('sin portapapeles');
+      // Algunos navegadores dejan la promesa esperando un permiso que nunca
+      // llega: a los 1,5 s se usa el método alternativo igual.
+      await Promise.race([
+        navigator.clipboard.writeText(texto),
+        new Promise((_, ko) => setTimeout(() => ko(new Error('portapapeles sin respuesta')), 1500)),
+      ]);
     } catch (_) {
       const ta = document.createElement('textarea');
       ta.value = texto; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';

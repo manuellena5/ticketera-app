@@ -315,10 +315,13 @@
     }
 
     async function abrirVenta(v) {
-      st.seleccion = { tipo: 'venta', v, det: null };
+      const sel = { tipo: 'venta', v, det: null };
+      st.seleccion = sel;
       st.resultado = null;
       pVentas();
-      try { st.seleccion.det = await rpc('detalle_venta', { p_venta_id: v.ref }); } catch (err) { avisoError(err); }
+      try { sel.det = await rpc('detalle_venta', { p_venta_id: v.ref }); } catch (err) { avisoError(err); }
+      // Si mientras tanto se abrió otro panel (otra venta, una cortesía), no se pisa.
+      if (st.seleccion !== sel || st.seccion !== 'ventas') return;
       pVentas();
       const p = $('#panel'); if (p) p.scrollIntoView({ block: 'nearest' });
     }
@@ -404,6 +407,8 @@
         });
       });
       const fc = $('#form-cortesia');
+      // Lo que se va escribiendo queda guardado: si el panel se redibuja, no se pierde.
+      if (fc) fc.addEventListener('input', (ev) => { if (ev.target.name) st.seleccion[ev.target.name] = ev.target.value; });
       if (fc) fc.addEventListener('submit', (ev) => {
         ev.preventDefault();
         const s = st.seleccion;

@@ -76,6 +76,7 @@ async function cambiarClave(page, clave = 'claveNueva1') {
   await page.click('button[type=submit]');
 }
 
+const esperar = async (fn, ms = 8000) => { const fin = Date.now() + ms; while (Date.now() < fin) { if (await fn()) return true; await new Promise((r) => setTimeout(r, 150)); } return false; };
 const textoDe = (page, sel) => page.innerText(sel).then((t) => (t || '').replace(/\s+/g, ' ').trim());
 
 try {
@@ -103,10 +104,12 @@ try {
   await page.fill('input[name=clave]', 'prueba1234');
   await page.fill('input[name=clave2]', 'prueba1234');
   await page.click('button[type=submit]');
-  await page.waitForSelector('.aviso--error');
+  // El cartel anterior ("no coinciden") sigue en pantalla hasta que responde el servidor:
+  // se espera el mensaje nuevo, no cualquier cartel de error.
+  await page.waitForSelector('.aviso--error >> text=distinta', { timeout: 10000 }).catch(() => {});
   ok(/distinta/.test(await textoDe(page, '.aviso--error')), 'misma contraseña temporal: rechazada');
   await cambiarClave(page);
-  await page.waitForSelector('text=Hola, Lucía');
+  await page.waitForSelector('.encabezado--hero >> text=Hola, Lucía');   // el Inicio (no la pantalla de contraseña, que también saluda)
   ok((await q(`select debe_cambiar_clave from perfiles where usuario = 'lucia'`))[0].debe_cambiar_clave === false, 'la base registra que ya cambió la contraseña');
 
   // =====================================================================
@@ -146,13 +149,12 @@ try {
   await revisar(page, 'entrada lista');
   const [popup] = await Promise.all([ctx.waitForEvent('page'), page.click('#enviar')]);  // toque 3
   await popup.close();
-  await page.waitForTimeout(300);
-  ok((await q('select enviada_en from ventas where id = $1', [venta.id]))[0].enviada_en !== null, 'tocar "Enviar por WhatsApp" la marca como enviada');
+  ok(await esperar(async () => (await q('select enviada_en from ventas where id = $1', [venta.id]))[0].enviada_en !== null), 'tocar "Enviar por WhatsApp" la marca como enviada');
   const cliente = await ctx.newPage();
   await cliente.close();
 
   await page.click('#copiar');
-  await page.waitForSelector('#aviso-toast:not([hidden])');
+  await page.waitForSelector('#aviso-toast:not([hidden]) >> text=Link copiado.', { timeout: 5000 }).catch(() => {});
   ok(await textoDe(page, '#aviso-toast') === 'Link copiado.', '"Copiar link" avisa');
   await page.click('#inicio');
   await page.waitForSelector('.fila-venta');
@@ -179,7 +181,7 @@ try {
      'transferencia: muestra los datos del club y "Pedile el comprobante"');
   await revisar(page, 'nueva entrada transferencia');
   await page.click('#copiar-alias');
-  await page.waitForSelector('#aviso-toast:not([hidden])');
+  await page.waitForSelector('#aviso-toast:not([hidden]) >> text=Alias copiado.', { timeout: 5000 }).catch(() => {});
   ok(await textoDe(page, '#aviso-toast') === 'Alias copiado.', '"Copiar alias" funciona');
   const antes = (await q('select count(*)::int n from ventas'))[0].n;
   await page.evaluate(() => { const b = document.getElementById('emitir'); b.click(); b.click(); b.click(); });
@@ -217,9 +219,12 @@ try {
 
   // =====================================================================
   console.log('\n== Cambio de tanda al agotarse');
-  await page.click('#inicio');
-  await page.click('#nueva');
+  await Promise.all([page.waitForResponse((r) => r.url().includes('/rpc/inicio_rrpp')), page.click('#inicio')]);
+  // Al abrir "Nueva entrada" la app pide la tanda vigente: se espera esa respuesta
+  // para que el cambio de tanda pase DESPUÉS, mientras el RRPP completa.
+  await Promise.all([page.waitForResponse((r) => r.url().includes('/rpc/inicio_rrpp')), page.click('#nueva')]);
   await page.waitForSelector('#form-venta');
+  await page.waitForTimeout(100);
   await page.fill('input[name=nombre]', 'Carla Ruiz');
   await page.fill('input[name=dni]', '34555666');
   await q(`update tandas set cantidad = privado.emitidas_tanda(id) where nombre = 'Anticipada'`);   // se agota mientras completa
@@ -336,7 +341,8 @@ try {
   ok(/Te quedan 10 en esta tanda/.test(await textoDe(p3, '.tarjetas')), 'Sofía: "Te quedan 10 en esta tanda" (20% de 50)');
   await q(`update tandas set cantidad = 100 where nombre = 'General'`);
   await p3.reload();
-  await p3.waitForSelector('.tanda-vigente');
+  // Primero se ve lo guardado en el celular; se espera el dato fresco del servidor.
+  await p3.waitForSelector('.tarjetas >> text=Te quedan 20 en esta tanda', { timeout: 10000 }).catch(() => {});
   ok(/Te quedan 20 en esta tanda/.test(await textoDe(p3, '.tarjetas')), 'el límite por % se ajusta solo si cambia la tanda (20% de 100 = 20)');
   await p3.click('#nueva');
   for (let i = 0; i < 5; i++) await p3.click('#mas');

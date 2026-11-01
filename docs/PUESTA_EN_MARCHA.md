@@ -10,6 +10,7 @@ Proyecto: `https://nkeijeavrkdhtkvkgcvh.supabase.co` (ya cargado en `js/config.j
    Crea el primer admin, el evento (en borrador) con sus 3 tandas y la configuración del club.
    Al final muestra `admins 1 · eventos 1 · tandas 3 · config 1`.
    **No** correr `seed.sql` (es solo para pruebas: tiene contraseñas conocidas).
+3. **Verificación** (solo lectura): correr `supabase/verificar_proyecto.sql`. Las 16 filas tienen que decir ✅.
 
 ## 2. Autenticación (Authentication → Sign In / Providers)
 
@@ -19,11 +20,8 @@ Proyecto: `https://nkeijeavrkdhtkvkgcvh.supabase.co` (ya cargado en `js/config.j
 
 ## 3. Clave pública en la app
 
-En *Project Settings → API Keys* copiar la **Publishable key** (`sb_publishable_…`) o, si el proyecto
-muestra las claves viejas, la **anon public**. Esa clave es pública: va en el frontend.
-**Nunca** la *Secret key* ni la *service_role*.
-
-Pasársela a Claude (o pegarla en `SUPABASE_ANON_KEY` de `js/config.js`) y publicar.
+✅ Cargada en `js/config.js` (anon public). Es pública: va en el frontend.
+**Nunca** poner la *Secret key* ni la *service_role* en el repo.
 
 ## 4. Edge Function para crear usuarios desde el panel
 

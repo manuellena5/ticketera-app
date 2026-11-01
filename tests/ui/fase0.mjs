@@ -46,9 +46,12 @@ async function revisarPantalla(page, nombre) {
 
 const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'es-AR' };
 
-// 1) App sin configurar (estado del repo)
+// 1) App sin configurar
 {
   const ctx = await navegador.newContext(MOVIL);
+  // Se simula una instalación sin clave cargada (el repo ya tiene la real).
+  await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: '" + URL_PROYECTO + "', SUPABASE_ANON_KEY: 'TU-ANON-KEY', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   const page = await nuevaPagina(ctx);
   await page.goto(BASE);
   await page.waitForSelector('.aviso');
@@ -107,6 +110,9 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
 // 3) Página del comprador
 {
   const ctx = await navegador.newContext(MOVIL);
+  // Se simula una instalación sin clave cargada (el repo ya tiene la real).
+  await ctx.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body:
+    "window.CONFIG = Object.freeze({ SUPABASE_URL: '" + URL_PROYECTO + "', SUPABASE_ANON_KEY: 'TU-ANON-KEY', AUTH_DOMAIN: 'usuarios.ticketera-app.com.ar', NOMBRE_CLUB: 'Club Deportivo Mitre' });" }));
   const page = await nuevaPagina(ctx);
   await page.goto(BASE + 'entrada.html');
   await page.waitForSelector('.aviso');

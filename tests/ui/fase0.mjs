@@ -68,8 +68,8 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
   ok(await page.isVisible('#sin-conexion'), 'sin conexión: abre desde la caché y avisa');
   const p2 = await nuevaPagina(ctx);
   await p2.goto(BASE + 'entrada.html#t=ABC');
-  await p2.waitForSelector('h2');
-  ok(/Tu entrada/.test(await p2.textContent('main')), 'sin conexión: la página del comprador abre desde la caché');
+  await p2.waitForSelector('.hero');
+  ok(/no está completo/.test(await p2.textContent('main')), 'sin conexión: la página del comprador abre desde la caché');
   await ctx.close();
 }
 
@@ -108,12 +108,13 @@ const MOVIL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isM
   const ctx = await navegador.newContext(MOVIL);
   const page = await nuevaPagina(ctx);
   await page.goto(BASE + 'entrada.html');
-  await page.waitForSelector('h2');
+  await page.waitForSelector('.aviso');
   ok(/no está completo/.test(await page.textContent('main')), 'comprador sin token: aviso claro');
   await revisarPantalla(page, 'comprador sin token');
-  await page.goto(BASE + 'entrada.html#t=ABCDEF');
+  await page.goto(BASE + 'entrada.html#t=ABCDEFGHIJKLMNOPQRSTUVWXYZ');
   await page.reload();
-  await page.waitForSelector('h2');
+  await page.waitForSelector('.aviso');
+  ok(/no está lista/.test(await page.textContent('main')), 'comprador con la app sin configurar: aviso claro');
   await revisarPantalla(page, 'comprador con token');
   await ctx.close();
 }

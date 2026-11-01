@@ -261,3 +261,37 @@ p { margin: 0; }
 .dialogo { border: 0; border-radius: 16px; padding: 20px; width: min(420px, calc(100% - 32px)); }
 .dialogo::backdrop { background: rgba(17, 24, 39, .55); }
 .dialogo > * + * { margin-top: 12px; }
+
+/* =====================================================================
+   Fase 2 · Página del comprador
+   ===================================================================== */
+.hero { display: flex; flex-direction: column; gap: 6px; padding: 28px 20px 24px; padding-top: max(28px, env(safe-area-inset-top)); }
+.hero--compacto { padding: 20px 20px 18px; padding-top: max(20px, env(safe-area-inset-top)); gap: 2px; }
+.hero__fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.hero .encabezado__version { color: #9CA3AF; }
+.hero__presenta { margin: 0; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: #FDBA74; font-weight: 700; }
+.hero__titulo { margin: 0; font-size: 36px; line-height: 1.05; font-weight: 800; }
+.hero__nombre { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 800; }
+.hero__dato { margin: 0; font-size: 16px; color: #E5E7EB; }
+
+.entrada-texto--grande { min-height: 58px; font-size: 22px; letter-spacing: .06em; }
+
+.nota { display: flex; gap: 10px; align-items: flex-start; background: var(--superficie); border-radius: var(--radio); padding: 14px; color: var(--texto-suave); }
+.nota svg { flex: none; margin-top: 1px; }
+.nota p { line-height: 1.4; }
+.nota--destacada { background: #FFF7ED; border: 1px solid #FED7AA; color: #7C2D12; }
+
+.entrada { display: flex; flex-direction: column; align-items: stretch; gap: 12px; border-radius: 20px; padding: 20px 18px; }
+.entrada > * + * { margin-top: 0; }
+.entrada__cabeza { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.entrada__cabeza h3 { font-size: 19px; font-weight: 800; }
+.entrada--cerrada { flex-direction: row; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 16px; }
+.texto-ok { color: var(--ok-osc); font-weight: 600; }
+.qr-caja { display: flex; justify-content: center; }
+.qr { width: 250px; height: 250px; image-rendering: pixelated; }
+.boton--borde-ok { background: var(--superficie); border-color: var(--ok); color: var(--ok); }
+.pasar { display: flex; flex-direction: column; gap: 14px; border-radius: 20px; padding: 20px 18px; }
+.pasar > * + * { margin-top: 0; }
+.pasar .campo + .campo { margin-top: 0; }
+.encabezado__version { white-space: nowrap; }
+.hero__fila { align-items: flex-start; }

@@ -17,8 +17,9 @@ js/util.js            plural(), pesos(), fechas, mensajes de error sin jerga
 js/api.js             Cliente de Supabase (solo anon key)
 js/app.js             Arranque, ingreso, cambio de contraseña y ruteo por rol
 js/rrpp.js            App del RRPP (Inicio, Nueva entrada, Entrada lista, Mis ventas, Detalle)
-js/entrada.js         Página del comprador
-vendor/               Librerías copiadas al repo (sin CDN): supabase-js, Figtree
+js/entrada.js         Página del comprador (DNI, QR, guardar imagen, pasar a otra persona)
+js/qr.js              Dibujo del QR y de la imagen PNG de la entrada
+vendor/               Librerías copiadas al repo (sin CDN): supabase-js, qrcode-generator, Figtree
 supabase/migrations/  Esquema, seguridad (RLS + revocaciones) y RPC
 supabase/seed.sql     Datos de PRUEBA (evento, tandas, usuarios)
 tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
@@ -29,6 +30,9 @@ tests/                Tests SQL (Postgres local) y de interfaz (Chromium)
 - **Fase 0** (base): lista.
 - **Fase 1** (RRPP): lista. `emitir_venta` con tanda vigente, stock, límite por RRPP, tope general,
   comisión congelada e idempotencia; Inicio, Nueva entrada, Entrada lista con WhatsApp, Mis ventas y Detalle.
+- **Fase 2** (link del comprador): lista. DNI con freno de 5 intentos y bloqueo de 15 minutos, QR por
+  entrada, Guardar imagen (PNG), Pasar a otra persona con link individual (`#e=`) que se invalida al
+  volver a pasarla.
 
 ## Seguridad en dos líneas
 

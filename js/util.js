@@ -110,6 +110,15 @@
     return p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1, 3) + ' ' + p.day + '/' + p.month;
   }
 
+  // "Viernes 18 de diciembre · 23:59 hs"
+  function fechaLarga(fecha) {
+    const d = fecha instanceof Date ? fecha : new Date(fecha);
+    const p = partes(d);
+    const mes = new Intl.DateTimeFormat('es-AR', { timeZone: TZ, month: 'long' }).format(d);
+    return p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1) + ' ' + Number(p.day) + ' de ' + mes +
+      ' · ' + p.hour + ':' + p.minute + ' hs';
+  }
+
   function primerNombre(nombre) { return String(nombre || '').trim().split(/\s+/)[0] || ''; }
 
   function nuevaClave() {
@@ -185,7 +194,7 @@
   }
 
   window.U = Object.freeze({
-    plural, miles, pesos, diaMes, hora, fechaCorta, fechaEvento, diaEvento, diaCorto,
+    plural, miles, pesos, diaMes, hora, fechaCorta, fechaEvento, diaEvento, diaCorto, fechaLarga,
     soloDigitos, dniValido, escaparHTML, mensajeDeError, conBoton, telWhatsApp, primerNombre,
     nuevaClave, avisar, copiar, confirmar, guardar, leer, borrar, esErrorDeRed,
   });

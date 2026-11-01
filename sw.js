@@ -16,6 +16,8 @@ const ARCHIVOS = [
   'js/app.js',
   'js/rrpp.js',
   'js/entrada.js',
+  'js/qr.js',
+  'vendor/qrcode/qrcode.js',
   'vendor/supabase/supabase.js',
   'vendor/fonts/figtree-latin-400-normal.woff2',
   'vendor/fonts/figtree-latin-600-normal.woff2',

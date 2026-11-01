@@ -6,28 +6,24 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://TU-PROYECTO.supabase.co wss://TU-PROYECTO.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#C2410C">
+  <meta name="theme-color" content="#111827">
   <title>Tu entrada · Club Deportivo Mitre</title>
   <link rel="icon" href="img/icono-192.png" type="image/png">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <header class="encabezado">
-    <h1 class="encabezado__titulo">Club Deportivo Mitre <span class="encabezado__version" id="version"></span></h1>
-  </header>
   <div class="sin-conexion" id="sin-conexion" role="status" hidden>Sin conexión.</div>
-
-  <main class="contenido" id="app" aria-live="polite">
-    <section class="pantalla">
-      <p class="suave centrado">Cargando…</p>
-    </section>
-  </main>
+  <div id="app" aria-live="polite">
+    <main class="contenido"><p class="suave centrado">Cargando…</p></main>
+  </div>
 
   <script src="js/version.js"></script>
   <script src="js/config.js"></script>
   <script src="vendor/supabase/supabase.js"></script>
   <script src="js/util.js"></script>
   <script src="js/api.js"></script>
+  <script src="vendor/qrcode/qrcode.js"></script>
+  <script src="js/qr.js"></script>
   <script src="js/entrada.js"></script>
 </body>
 </html>

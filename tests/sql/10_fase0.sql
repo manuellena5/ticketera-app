@@ -57,8 +57,8 @@ select pruebas.ok(
   (select coalesce(array_agg(p.proname::text order by p.proname), '{}')
    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public','privado') and has_function_privilege('anon', p.oid, 'EXECUTE'))
-  = array['pasar_entrada','ver_entrada_pasada','ver_entradas'],
-  'anon solo puede ejecutar ver_entradas, pasar_entrada y ver_entrada_pasada');
+  = array['evento_del_link','pasar_entrada','ver_entrada_pasada','ver_entradas'],
+  'anon solo puede ejecutar las 4 funciones de la página del comprador');
 
 select pruebas.ok(
   not exists (
@@ -105,7 +105,7 @@ select pruebas.falla($$select public.anular_venta(gen_random_uuid(), 'x')$$, '42
 select pruebas.falla($$select public.emitir_venta(gen_random_uuid(), 'a', '12345678', null, 1, 'efectivo')$$, '42501', 'anon no puede emitir');
 select pruebas.falla($$select public.mi_perfil()$$, '42501', 'anon no puede pedir perfil');
 select pruebas.falla($$select privado.rol_actual()$$, '42501', 'anon no ve el schema privado');
-select pruebas.falla($$select public.ver_entradas('x', '12345678')$$, 'P0001', 'anon sí llega a ver_entradas (pendiente fase 2)', 'no_disponible');
+select pruebas.ok(public.ver_entradas('x', '12345678') ->> 'ok' = 'false', 'anon sí llega a ver_entradas (y con un link inválido no ve nada)');
 reset role;
 
 \echo

@@ -207,3 +207,21 @@ export async function instalarSupabase(contexto, pool) {
 
   return registro;
 }
+
+// Ejecuta una RPC como un usuario (para preparar datos en los tests).
+export async function comoUsuario(pool, usuarioId, sql, params = []) {
+  const c = await pool.connect();
+  try {
+    await c.query('begin');
+    await c.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: usuarioId, role: 'authenticated' })]);
+    await c.query('set local role authenticated');
+    const r = await c.query(sql, params);
+    await c.query('commit');
+    return r.rows;
+  } catch (err) {
+    await c.query('rollback').catch(() => {});
+    throw err;
+  } finally {
+    c.release();
+  }
+}

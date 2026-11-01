@@ -239,6 +239,10 @@ export async function instalarSupabase(contexto, pool) {
 
   await contexto.route(URL_PROYECTO + '/**', async (route) => {
     if (registro.offline) return route.abort('internetdisconnected');
+    // DEMORA_BACKEND=400 simula un servidor lento (para encontrar carreras en los tests).
+    const demora = Number(process.env.DEMORA_BACKEND || 0);
+    if (demora) await new Promise((r) => setTimeout(r, demora));
+    if (registro.offline) return route.abort('internetdisconnected');
     const req = route.request();
     const url = new URL(req.url());
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });

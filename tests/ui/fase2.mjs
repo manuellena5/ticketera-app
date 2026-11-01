@@ -35,10 +35,18 @@ async function emitir(nombre, dni, cantidad) {
     `select public.emitir_venta(gen_random_uuid(), $1, $2, null, $3, 'efectivo') as r`, [nombre, dni, cantidad]);
   return r.r;
 }
+// Pone el DNI y espera la respuesta del servidor (si no, se podría leer el
+// cartel del intento anterior, que sigue en pantalla mientras tanto).
 async function ponerDni(page, dni) {
   await page.waitForSelector('#form-dni');
   await page.fill('input[name=dni]', dni);
-  await page.click('#ver');
+  const sinRed = await page.evaluate(() => !navigator.onLine);
+  if (sinRed || !/^\d{7,8}$/.test(dni.replace(/\D/g, ''))) return page.click('#ver');
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/ver_entradas'), { timeout: 10000 }).catch(() => {}),
+    page.click('#ver'),
+  ]);
+  await page.waitForFunction(() => !document.querySelector('#ver') || !document.querySelector('#ver').disabled, null, { timeout: 10000 }).catch(() => {});
 }
 
 try {

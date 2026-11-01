@@ -48,14 +48,18 @@ try {
   ok(Number(ta.e) === ta.c, 'la Anticipada quedó justa: ni una de más');
   ok(Number((await q(`select count(*) n from ventas v join tandas t on t.id = v.tanda_id where t.nombre = 'General'`))[0].n) === 0, 'ninguna se cobró a un precio que el RRPP no vio');
 
-  console.log('\n== Límite del RRPP: Sofía con 3 de cupo, 15 pedidos a la vez');
-  await q(`update rrpp_evento set limite_tipo = 'cantidad', limite_valor = 3 where rrpp_id = $1`, [U.sofia]);
+  console.log('\n== Límite del RRPP: a Sofía le quedan 3 de cupo, 15 pedidos a la vez');
   await q(`update tandas set cantidad = 500 where nombre = 'Anticipada'`);   // vuelve a haber stock
-  const yaSofia = Number((await q(`select coalesce(sum(v.cantidad),0) n from ventas v join tandas t on t.id = v.tanda_id where rrpp_id = $1 and t.nombre = 'Anticipada' and estado = 'activa'`, [U.sofia]))[0].n);
+  const vendidasSofia = async () => Number((await q(`select coalesce(sum(v.cantidad),0) n from ventas v join tandas t on t.id = v.tanda_id
+                                                    where v.rrpp_id = $1 and t.nombre = 'Anticipada' and v.estado = 'activa'`, [U.sofia]))[0].n);
+  // Lo que ya vendió depende del reparto al azar de la prueba del tope: el cupo es eso + 3.
+  const yaSofia = await vendidasSofia();
+  await q(`update rrpp_evento set limite_tipo = 'cantidad', limite_valor = $2 where rrpp_id = $1`, [U.sofia, yaSofia + 3]);
   res = await Promise.all(Array.from({ length: 15 }, (_, i) => vender(U.sofia, 200 + i)));
   r = contar(res);
-  const ahoraSofia = Number((await q(`select coalesce(sum(v.cantidad),0) n from ventas v join tandas t on t.id = v.tanda_id where rrpp_id = $1 and t.nombre = 'Anticipada' and estado = 'activa'`, [U.sofia]))[0].n);
-  ok(ahoraSofia === 3 && r.ok === 3 - yaSofia, `Sofía quedó en 3 de 3 (pasaron ${r.ok || 0}, frenadas ${r.limite_rrpp || 0})`);
+  const ahoraSofia = await vendidasSofia();
+  ok(r.ok === 3 && r.limite_rrpp === 12 && ahoraSofia === yaSofia + 3,
+     `pasaron justo 3 y 12 frenaron por el límite (tenía ${yaSofia}, cupo ${yaSofia + 3}, quedó en ${ahoraSofia})`);
 
   console.log('\n== Doble toque simultáneo: misma clave 10 veces a la vez');
   const idem = randomUUID();
@@ -77,13 +81,18 @@ try {
   r = contar(res);
   ok(r.ok === 7 && await emitidas() === antes + 7, `entraron justo 7 entre los tres canales (${JSON.stringify(r)})`);
 
-  console.log('\n== Dos escáneres con el mismo QR a la vez');
+  console.log('\n== Dos escáneres con el mismo QR a la vez (4 pedidos simultáneos)');
   const [h] = await q(`select codigo_hash h from entradas e join ventas v on v.id = e.venta_id where v.canal = 'rrpp' and e.ingreso_en is null limit 1`);
-  res = await Promise.all([U.puerta1, U.puerta2, U.puerta1, U.puerta2].map((u, i) => comoUsuario(base.pool, u,
-    `select public.registrar_ingresos(jsonb_build_array(jsonb_build_object('h', $1::text, 'dispositivo', $2::text))) r`, [h.h, 'cel-' + i])
-    .then((x) => x[0].r.resultados[0].resultado)));
-  r = contar(res);
-  ok(r.ok === 1 && r.duplicado === 3, `un solo ingreso, 3 duplicados (${JSON.stringify(r)})`);
+  const dupAntes = Number((await q(`select count(*) n from auditoria where accion = 'intento_duplicado'`))[0].n);
+  // Como los celulares reales, cada uno manda la hora del escaneo: cel-0 escaneó primero.
+  const t0s = Date.parse('2026-10-31T23:00:00-03:00');
+  await Promise.all([U.puerta1, U.puerta2, U.puerta1, U.puerta2].map((u, i) => comoUsuario(base.pool, u,
+    `select public.registrar_ingresos(jsonb_build_array(jsonb_build_object('h', $1::text, 'dispositivo', $2::text, 'momento', $3::text)))`,
+    [h.h, 'cel-' + i, new Date(t0s + i * 1000).toISOString()])));
+  const [ing] = await q(`select ingreso_dispositivo d, ingreso_en t from entradas where codigo_hash = $1`, [h.h]);
+  const dupDespues = Number((await q(`select count(*) n from auditoria where accion = 'intento_duplicado'`))[0].n);
+  ok(ing.d === 'cel-0' && ing.t.getTime() === t0s, `un solo ingreso y gana el que escaneó primero, sin importar el orden de llegada (${ing.d})`);
+  ok(dupDespues - dupAntes === 3, `los otros 3 quedan como intento duplicado en la auditoría (${dupDespues - dupAntes})`);
 } catch (err) {
   console.error(err);
   c.fallas++;

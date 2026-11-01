@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  base-y-estaticos:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Tests SQL (Postgres local que emula Supabase)
+        run: npm run test:sql
+      - name: Chequeos estáticos (CSP, service worker, claves)
+        run: npm run test:estatico
+      - name: Concurrencia
+        run: node tests/carga/concurrencia.mjs
+
+  pantallas:
+    runs-on: ubuntu-24.04
+    needs: base-y-estaticos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Playwright + Chromium
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Pantallas de punta a punta
+        run: npm run test:ui && npm run test:flujo
